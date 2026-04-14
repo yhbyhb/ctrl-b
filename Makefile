@@ -1,0 +1,31 @@
+APP_NAME   = ctrl-b-helper
+BUNDLE     = $(APP_NAME).app
+BUILD_DIR  = .build/release
+BINARY     = $(BUILD_DIR)/$(APP_NAME)
+
+.PHONY: build app install test clean
+
+## swift build (개발용)
+build:
+	swift build -c release
+
+## .app 번들 생성
+app: build
+	mkdir -p $(BUNDLE)/Contents/MacOS
+	mkdir -p $(BUNDLE)/Contents/Resources
+	cp $(BINARY) $(BUNDLE)/Contents/MacOS/$(APP_NAME)
+	cp Resources/Info.plist $(BUNDLE)/Contents/Info.plist
+	@echo "✓ $(BUNDLE) 생성 완료"
+
+## /Applications 에 설치
+install: app
+	cp -r $(BUNDLE) /Applications/
+	@echo "✓ /Applications/$(BUNDLE) 설치 완료"
+
+## 유닛 테스트 실행
+test:
+	swift test
+
+## 빌드 산출물 정리
+clean:
+	rm -rf .build $(BUNDLE)
