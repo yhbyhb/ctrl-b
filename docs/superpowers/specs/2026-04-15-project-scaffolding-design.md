@@ -13,9 +13,9 @@ ctrl-b-helper 프로젝트에 소프트웨어 공학 기본 인프라를 구축�
 3. Git pre-commit hook — 커밋 시 자동 lint
 4. GitHub Actions CI — PR/push 시 build + test + lint
 5. `README.md` — 프로젝트 문서화
-6. Release Please — 릴리스 자동화 (마지막)
 
-범위 밖: LICENSE (추후 결정), CONTRIBUTING.md (1인 프로젝트), PR 템플릿, branch protection.
+추후: LICENSE, Release Please (섹션 6은 참고용으로 유지하되 이번 구현 범위 밖).
+범위 밖: CONTRIBUTING.md (1인 프로젝트), PR 템플릿, branch protection.
 
 ---
 
