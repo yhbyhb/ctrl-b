@@ -175,64 +175,12 @@ jobs:
 - **Build**: `swift build`, `swift test`, `make lint`
 - **Development Setup**: `make setup` (git hooks)
 
-## 6. Release Please (마지막)
+## 6. Release Please (추후 — 이번 구현 범위 밖)
 
-### 워크플로우: `.github/workflows/release-please.yml`
+추후 구현 시 고려 사항 메모:
 
-```yaml
-name: Release Please
-
-on:
-  push:
-    branches: [main]
-
-permissions:
-  contents: write
-  pull-requests: write
-
-jobs:
-  release-please:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: googleapis/release-please-action@v4
-        with:
-          release-type: simple
-```
-
-`simple` 타입 사용 — `version.txt`와 `CHANGELOG.md`만 관리.
-
-### Info.plist 버전 동기화
-
-Release Please는 `version.txt`를 업데이트하지만, 앱의 실제 버전은 `Resources/Info.plist`의 `CFBundleShortVersionString`과 `CFBundleVersion`에 있다. 이 두 값이 어긋나면 릴리스 태그와 앱 버전이 불일치한다.
-
-해결: Release Please의 `extra-files` 설정으로 Info.plist도 함께 업데이트:
-
-```yaml
-      - uses: googleapis/release-please-action@v4
-        with:
-          release-type: simple
-          extra-files: |
-            Resources/Info.plist
-```
-
-Info.plist 내에 Release Please가 인식할 수 있도록 버전 문자열에 `x-release-please-version` 어노테이션을 추가:
-
-```xml
-<key>CFBundleShortVersionString</key>
-<string>1.0.0</string> <!-- x-release-please-version -->
-<key>CFBundleVersion</key>
-<string>1</string>
-```
-
-`CFBundleShortVersionString`은 semver(예: 1.1.0), `CFBundleVersion`은 빌드 번호로 별도 관리. Release Please는 `CFBundleShortVersionString`만 업데이트한다.
-
-### 초기 파일
-
-프로젝트 루트에 `version.txt` 생성: `1.0.0` (현재 Info.plist의 CFBundleShortVersionString과 일치).
-
-### 동작 흐름
-
-1. main에 `feat:` / `fix:` 커밋 push
-2. Release Please가 자동으로 Release PR 생성 (CHANGELOG.md + version.txt + Info.plist 업데이트 포함)
-3. Release PR merge 시 GitHub Release + git tag 자동 생성
-4. Info.plist의 CFBundleShortVersionString이 새 버전으로 동기화됨
+- `googleapis/release-please-action@v4` 사용
+- v4의 고급 설정(extra-files 등)은 workflow input이 아닌 `release-please-config.json` / `.release-please-manifest.json` 파일 기반으로 설정해야 함
+- 필요 권한: `contents: write`, `pull-requests: write`, `issues: write`
+- Info.plist의 `CFBundleShortVersionString`과 `version.txt` 동기화 방안 필요
+- 상세 설계는 구현 시점에 공식 문서 기준으로 재작성: https://github.com/googleapis/release-please-action
