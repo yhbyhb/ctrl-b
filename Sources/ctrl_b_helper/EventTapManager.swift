@@ -84,10 +84,52 @@ final class EventTapManager {
         }
     }
 
+    /// prefix 키 리매핑 직후 다음 1키를 한글→영문으로 리매핑
+    private func handleFollowUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+        pendingFollowUp = false
+        followUpTimer?.cancel()
+        followUpTimer = nil
+
+        let followUpKeyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        let hasNoModifiers = event.flags.isDisjoint(with: [.maskControl, .maskCommand, .maskAlternate])
+
+        guard hasNoModifiers,
+              let ascii = keyCodeToLowerASCII[followUpKeyCode],
+              isKoreanInputSourceActive() else {
+            log.debug("Follow-up dismissed: keyCode=\(followUpKeyCode) hasNoModifiers=\(hasNoModifiers)")
+            return Unmanaged.passRetained(event)
+        }
+
+        guard let source = CGEventSource(stateID: .hidSystemState),
+              let newEvent = CGEvent(keyboardEventSource: source,
+                                     virtualKey: CGKeyCode(followUpKeyCode),
+                                     keyDown: true) else {
+            return Unmanaged.passRetained(event)
+        }
+
+        newEvent.flags = event.flags
+        newEvent.setIntegerValueField(.eventSourceUserData, value: Self.sentinel)
+
+        var asciiChar = UniChar(ascii)
+        newEvent.keyboardSetUnicodeString(stringLength: 1, unicodeString: &asciiChar)
+
+        log.debug("FOLLOW-UP REMAP: keyCode=\(followUpKeyCode) → '\(Character(UnicodeScalar(ascii)))'")
+
+        newEvent.post(tap: .cghidEventTap)
+        statisticsManager.recordRemap()
+
+        return nil
+    }
+
     fileprivate func handleKeyEvent(_ event: CGEvent, type: CGEventType) -> Unmanaged<CGEvent>? {
         // 합성 이벤트는 통과 (무한루프 방지)
         if event.getIntegerValueField(.eventSourceUserData) == Self.sentinel {
             return Unmanaged.passRetained(event)
+        }
+
+        // Follow-up 체크 (prefix 키 리매핑 직후 다음 1키)
+        if pendingFollowUp && type == .keyDown {
+            return handleFollowUp(event)
         }
 
         // 대상 modifier 체크 (현재: Ctrl)
