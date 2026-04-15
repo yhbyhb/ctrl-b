@@ -14,6 +14,11 @@ final class EventTapManager {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
+    private let prefixKeyCode: Int64 = 11  // Ctrl+B (향후 설정 가능)
+    private var pendingFollowUp = false
+    private var followUpTimer: DispatchWorkItem?
+    private let followUpTimeout: TimeInterval = 1.5
+
     private(set) var isEnabled: Bool = true {
         didSet {
             if let tap = eventTap {
@@ -79,10 +84,52 @@ final class EventTapManager {
         }
     }
 
+    /// prefix 키 리매핑 직후 다음 1키를 한글→영문으로 리매핑
+    private func handleFollowUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+        pendingFollowUp = false
+        followUpTimer?.cancel()
+        followUpTimer = nil
+
+        let followUpKeyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        let hasNoModifiers = event.flags.isDisjoint(with: [.maskControl, .maskCommand, .maskAlternate])
+
+        guard hasNoModifiers,
+              let ascii = keyCodeToLowerASCII[followUpKeyCode],
+              isKoreanInputSourceActive() else {
+            log.debug("Follow-up dismissed: keyCode=\(followUpKeyCode) hasNoModifiers=\(hasNoModifiers)")
+            return Unmanaged.passRetained(event)
+        }
+
+        guard let source = CGEventSource(stateID: .hidSystemState),
+              let newEvent = CGEvent(keyboardEventSource: source,
+                                     virtualKey: CGKeyCode(followUpKeyCode),
+                                     keyDown: true) else {
+            return Unmanaged.passRetained(event)
+        }
+
+        newEvent.flags = event.flags
+        newEvent.setIntegerValueField(.eventSourceUserData, value: Self.sentinel)
+
+        var asciiChar = UniChar(ascii)
+        newEvent.keyboardSetUnicodeString(stringLength: 1, unicodeString: &asciiChar)
+
+        log.debug("FOLLOW-UP REMAP: keyCode=\(followUpKeyCode) → '\(Character(UnicodeScalar(ascii)))'")
+
+        newEvent.post(tap: .cghidEventTap)
+        statisticsManager.recordRemap()
+
+        return nil
+    }
+
     fileprivate func handleKeyEvent(_ event: CGEvent, type: CGEventType) -> Unmanaged<CGEvent>? {
         // 합성 이벤트는 통과 (무한루프 방지)
         if event.getIntegerValueField(.eventSourceUserData) == Self.sentinel {
             return Unmanaged.passRetained(event)
+        }
+
+        // Follow-up 체크 (prefix 키 리매핑 직후 다음 1키)
+        if pendingFollowUp && type == .keyDown {
+            return handleFollowUp(event)
         }
 
         // 대상 modifier 체크 (현재: Ctrl)
@@ -119,6 +166,18 @@ final class EventTapManager {
         // 통계는 keyDown에서만 기록
         if type == .keyDown {
             statisticsManager.recordRemap()
+
+            // prefix 키(Ctrl+B) 리매핑 시 follow-up 활성화
+            if keyCode == prefixKeyCode {
+                pendingFollowUp = true
+                followUpTimer?.cancel()
+                let timer = DispatchWorkItem { [weak self] in
+                    self?.pendingFollowUp = false
+                }
+                followUpTimer = timer
+                DispatchQueue.main.asyncAfter(deadline: .now() + followUpTimeout, execute: timer)
+                log.debug("Follow-up armed for next key (timeout: \(self.followUpTimeout)s)")
+            }
         }
 
         return nil  // 원본 폐기
