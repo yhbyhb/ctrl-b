@@ -1,0 +1,17 @@
+# Sources와 Tests만 검사
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - .build
+  - docs
+
+# 프로젝트 특성에 맞게 비활성화하는 규칙
+disabled_rules:
+  - trailing_whitespace      # .editorconfig에서 처리
+  - line_length              # 긴 로그 문자열 허용
+
+# 경고 → 오류로 승격할 규칙
+opt_in_rules:
+  - force_unwrapping
