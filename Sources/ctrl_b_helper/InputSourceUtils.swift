@@ -1,12 +1,13 @@
 import Carbon
+import CtrlBHelperCore
 import os
 
 private let log = Logger(subsystem: "com.yhbyhb.ctrl-b-helper", category: "InputSource")
 
-/// 현재 활성 키보드 입력 소스가 한글인지 2단계로 판별한다.
-/// 1차: kTISPropertyInputSourceLanguages 배열에 "ko" 포함 여부
-/// 2차: kTISPropertyInputSourceID 문자열에 "Korean" 포함 여부 (language 배열 누락 대비)
-func isKoreanInputSourceActive() -> Bool {
+/// 현재 활성 키보드 입력 소스가 CJK (한국어/중국어/일본어)인지 2단계로 판별한다.
+/// 1차: kTISPropertyInputSourceLanguages 배열에 CJK 언어 포함 여부
+/// 2차: kTISPropertyInputSourceID 문자열에 CJK 키워드 포함 여부 (language 배열 누락 대비)
+func isCJKInputSourceActive() -> Bool {
     guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else {
         return false
     }
@@ -14,7 +15,7 @@ func isKoreanInputSourceActive() -> Bool {
     // 1차: language 배열
     if let langPtr = TISGetInputSourceProperty(source, kTISPropertyInputSourceLanguages) {
         let languages = Unmanaged<CFArray>.fromOpaque(langPtr).takeUnretainedValue() as? [String] ?? []
-        if languages.contains("ko") {
+        if containsCJKLanguage(languages) {
             return true
         }
     }
@@ -22,7 +23,7 @@ func isKoreanInputSourceActive() -> Bool {
     // 2차: input source ID
     if let idPtr = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) {
         let id = Unmanaged<CFString>.fromOpaque(idPtr).takeUnretainedValue() as String
-        if id.localizedCaseInsensitiveContains("korean") {
+        if isCJKInputSourceID(id) {
             return true
         }
     }
