@@ -104,6 +104,7 @@ lint-fix:
 ## 개발 환경 초기 설정 (git hooks)
 setup:
 	git config core.hooksPath .githooks
+	chmod +x .githooks/pre-commit
 	@echo "✓ Git hooks configured"
 ```
 
@@ -162,7 +163,7 @@ mkdir -p .githooks
 ```sh
 #!/bin/sh
 # SwiftLint pre-commit hook
-# staged된 Swift 파일만 검사 (working tree가 아닌 staged snapshot 기준)
+# staged된 Swift 파일만 검사
 
 SWIFT_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$')
 
@@ -175,21 +176,10 @@ if ! command -v swiftlint >/dev/null 2>&1; then
     exit 0
 fi
 
-# unstaged 변경분을 임시 저장하여 staged snapshot만 검사
-STASH_NAME="pre-commit-$(date +%s)"
-git stash push -q --keep-index -m "$STASH_NAME"
-
 echo "$SWIFT_FILES" | xargs swiftlint lint --strict --quiet
-RESULT=$?
-
-# unstaged 변경분 복원
-STASH_LIST=$(git stash list | head -1)
-case "$STASH_LIST" in
-    *"$STASH_NAME"*) git stash pop -q ;;
-esac
-
-exit $RESULT
 ```
+
+stash 기반 staged snapshot 검사는 stash pop 실패 시 unstaged 변경분을 잃을 위험이 있으므로 사용하지 않는다. 대신 working tree 기반으로 lint한다. partial staging과 working tree가 다른 경우 오탐이 있을 수 있으나, CI에서 최종 검증하므로 실질적 위험은 낮다.
 
 - [ ] **Step 2: 실행 권한 부여**
 
@@ -318,8 +308,6 @@ ctrl-b-helper runs as a menu bar app and uses a CGEventTap to intercept keyboard
 make app
 make install
 ```
-
-Or download from the [Releases](../../releases) page.
 
 After launching, grant **Accessibility permission** when prompted:
 System Settings > Privacy & Security > Accessibility > Allow ctrl-b-helper

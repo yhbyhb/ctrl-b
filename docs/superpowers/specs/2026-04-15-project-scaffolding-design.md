@@ -93,10 +93,10 @@ lint-fix:
 
 ### Hook 파일: `.githooks/pre-commit`
 
-```bash
+```sh
 #!/bin/sh
 # SwiftLint pre-commit hook
-# staged된 Swift 파일만 검사 (working tree가 아닌 staged snapshot 기준)
+# staged된 Swift 파일만 검사
 
 SWIFT_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$')
 
@@ -109,23 +109,10 @@ if ! command -v swiftlint >/dev/null 2>&1; then
     exit 0
 fi
 
-# unstaged 변경분을 임시 저장하여 staged snapshot만 검사
-STASH_NAME="pre-commit-$(date +%s)"
-git stash push -q --keep-index -m "$STASH_NAME"
-
 echo "$SWIFT_FILES" | xargs swiftlint lint --strict --quiet
-RESULT=$?
-
-# unstaged 변경분 복원
-STASH_LIST=$(git stash list | head -1)
-case "$STASH_LIST" in
-    *"$STASH_NAME"*) git stash pop -q ;;
-esac
-
-exit $RESULT
 ```
 
-staged snapshot을 검사하므로 partial staging 시에도 정확하다. SwiftLint 미설치 시 경고만 출력하고 커밋 허용 (CI에서 최종 검증). POSIX sh 호환 (`>/dev/null 2>&1`).
+working tree 기반으로 lint한다. stash 기반 staged snapshot 검사는 stash pop 실패 시 unstaged 변경분 유실 위험이 있어 사용하지 않는다. partial staging과 working tree가 다른 경우 오탐 가능하나, CI에서 최종 검증하므로 실질적 위험은 낮다. POSIX sh 호환.
 
 ### Setup 자동화
 
@@ -135,6 +122,7 @@ Makefile에 `setup` 타겟 추가:
 ## 개발 환경 초기 설정 (git hooks)
 setup:
 	git config core.hooksPath .githooks
+	chmod +x .githooks/pre-commit
 	@echo "✓ Git hooks configured"
 ```
 
@@ -182,7 +170,7 @@ jobs:
 
 - **What**: 한 줄 설명 — macOS 한글 IME에서 Ctrl+key 단축키가 동작하지 않는 문제 해결
 - **Why**: 문제 설명 (Korean IME consumes Ctrl+key events at interpretKeyEvents layer)
-- **Install**: `make app && make install` 또는 Releases 페이지
+- **Install**: `make app && make install`
 - **Usage**: 접근성 권한 설정 안내, 메뉴바 아이콘 설명
 - **Build**: `swift build`, `swift test`, `make lint`
 - **Development Setup**: `make setup` (git hooks)
