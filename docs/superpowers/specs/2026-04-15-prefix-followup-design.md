@@ -97,7 +97,7 @@ Ctrl+키는 modifier가 있어 IME가 이미 제어문자로 처리하므로 명
 1. **modifier 키 포함 시 제외** — Ctrl+B 후 Ctrl+C는 follow-up이 아닌 새 단축키. modifier가 있으면 follow-up 조건 불일치 → 통과 → 기존 Ctrl+키 로직에서 처리.
 2. **1회 소비** — 어떤 keyDown이든 pendingFollowUp을 false로 리셋. 다음 입력으로 누수 없음.
 3. **1.5초 자동 만료** — Ctrl+B 후 한참 뒤에 한글 입력해도 영향 없음.
-4. **keyUp 무시** — Ctrl+B의 keyUp이 follow-up을 소비하지 않음.
+4. **keyUp 처리** — follow-up은 keyDown만 리매핑, keyUp은 원본 그대로 통과. 스파이크 테스트에서 keyDown에만 `keyboardSetUnicodeString`을 설정하고 keyUp은 미설정으로 recreate한 결과 정상 동작 확인. tmux는 keyDown만으로 prefix 명령을 처리하므로 keyUp 불일치의 실질적 영향 없음. pendingFollowUp 플래그는 keyDown에서만 체크/소비되므로 keyUp은 자연스럽게 통과.
 
 ## 테스트 계획
 

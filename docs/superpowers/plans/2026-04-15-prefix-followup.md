@@ -160,6 +160,11 @@ git commit -m "feat: arm follow-up flag after Ctrl+B remap"
 2. **follow-up 체크** → pendingFollowUp일 때 처리
 3. Ctrl+알파벳 체크 → 기존 로직
 
+**keyUp 처리 결정:** follow-up은 keyDown만 리매핑하고 keyUp은 원본 그대로 통과시킨다. 근거:
+- 스파이크 테스트(`spike_followup.swift`)에서 keyDown에만 `keyboardSetUnicodeString`을 설정하고 keyUp은 미설정으로 recreate한 결과, TextEdit에 영문 `n`이 정상 입력됨 (Test B)
+- tmux는 keyDown만으로 prefix 명령을 처리하며 keyUp을 확인하지 않음
+- keyUp에 대해 `pendingFollowUp` 플래그를 소비하지 않는 이유: keyDown과 keyUp 사이에 플래그가 리셋되면 keyUp은 이미 follow-up 조건(`pendingFollowUp && type == .keyDown`)에 걸리지 않아 자연스럽게 원본 그대로 통과됨
+
 - [ ] **Step 2: 빌드 확인**
 
 Run: `swift build -c release 2>&1`
