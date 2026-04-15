@@ -3,6 +3,9 @@ import CoreGraphics
 import CtrlBHelperCore
 
 final class EventTapManager {
+    private static let sentinel: Int64 = 0x4342_4852_4D4150
+    private let targetModifiers: CGEventFlags = [.maskControl]
+
     private let statisticsManager: StatisticsManager
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -20,8 +23,12 @@ final class EventTapManager {
     }
 
     func start() {
+        let trusted = AXIsProcessTrusted()
+        NSLog("[DEBUG] Accessibility trusted: %@", trusted ? "YES" : "NO")
+
         let eventMask: CGEventMask =
             (1 << CGEventType.keyDown.rawValue) |
+            (1 << CGEventType.keyUp.rawValue) |
             (1 << CGEventType.tapDisabledByTimeout.rawValue) |
             (1 << CGEventType.tapDisabledByUserInput.rawValue)
 
@@ -35,14 +42,17 @@ final class EventTapManager {
             callback: tapCallback,
             userInfo: selfPtr
         ) else {
+            NSLog("[DEBUG] CGEvent.tapCreate FAILED — no accessibility permission?")
             showAccessibilityAlert()
             return
         }
 
+        NSLog("[DEBUG] CGEvent.tapCreate SUCCESS")
         eventTap = tap
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
+        NSLog("[DEBUG] Event tap enabled and added to run loop")
     }
 
     func stop() {
@@ -65,35 +75,56 @@ final class EventTapManager {
         }
     }
 
-    fileprivate func handleKeyEvent(_ event: CGEvent) -> Unmanaged<CGEvent>? {
-        guard event.flags.contains(.maskControl) else {
+    fileprivate func handleKeyEvent(_ event: CGEvent, type: CGEventType) -> Unmanaged<CGEvent>? {
+        // 합성 이벤트는 통과 (무한루프 방지)
+        if event.getIntegerValueField(.eventSourceUserData) == Self.sentinel {
             return Unmanaged.passRetained(event)
         }
 
-        var chars = [UniChar](repeating: 0, count: 4)
-        var length = 0
-        event.keyboardGetUnicodeString(
-            maxStringLength: 4,
-            actualStringLength: &length,
-            unicodeString: &chars
-        )
-
-        guard length > 0, isHangul(chars[0]) else {
+        // 대상 modifier 체크 (현재: Ctrl)
+        guard !event.flags.intersection(targetModifiers).isEmpty else {
             return Unmanaged.passRetained(event)
         }
 
+        // 대상 keyCode 체크 (a-z 알파벳 키만)
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-        guard let ascii = keyCodeToLowerASCII[keyCode] else {
+        guard keyCodeToLowerASCII[keyCode] != nil else {
             return Unmanaged.passRetained(event)
         }
 
-        // Ctrl 문자로 변환 (예: 'b' & 0x1F = 0x02 = Ctrl+B)
-        var ctrl = UniChar(ascii & 0x1F)
-        event.keyboardSetUnicodeString(stringLength: 1, unicodeString: &ctrl)
+        // 한글 입력 소스 체크
+        if !isKoreanInputSourceActive() {
+            // Ctrl+알파벳 keyDown인데 한글 감지 실패 → 누락 입력기 디버깅용 로그 (keyDown만, 1회)
+            if type == .keyDown {
+                logCurrentInputSource()
+            }
+            return Unmanaged.passRetained(event)
+        }
 
-        statisticsManager.recordRemap()
+        // 원본 폐기 + 합성 이벤트 생성
+        guard let source = CGEventSource(stateID: .hidSystemState),
+              let newEvent = CGEvent(keyboardEventSource: source,
+                                     virtualKey: CGKeyCode(keyCode),
+                                     keyDown: type == .keyDown) else {
+            return Unmanaged.passRetained(event)
+        }
 
-        return Unmanaged.passRetained(event)
+        newEvent.flags = event.flags
+        newEvent.setIntegerValueField(.eventSourceUserData, value: Self.sentinel)
+
+        NSLog("[DEBUG] REMAP: keyCode=%d type=%@ flags=0x%llX → synthetic event posted",
+              keyCode,
+              type == .keyDown ? "keyDown" : "keyUp",
+              event.flags.rawValue)
+
+        newEvent.post(tap: .cghidEventTap)
+
+        // 통계는 keyDown에서만 기록
+        if type == .keyDown {
+            statisticsManager.recordRemap()
+        }
+
+        return nil  // 원본 폐기
     }
 
     private func showAccessibilityAlert() {
@@ -129,8 +160,8 @@ private func tapCallback(
     case .tapDisabledByTimeout, .tapDisabledByUserInput:
         manager.handleTapDisabled()
         return Unmanaged.passRetained(event)
-    case .keyDown:
-        return manager.handleKeyEvent(event)
+    case .keyDown, .keyUp:
+        return manager.handleKeyEvent(event, type: type)
     default:
         return Unmanaged.passRetained(event)
     }
