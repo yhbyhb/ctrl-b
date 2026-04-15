@@ -1,4 +1,7 @@
 import Carbon
+import os
+
+private let log = Logger(subsystem: "com.yhbyhb.ctrl-b-helper", category: "InputSource")
 
 /// 현재 활성 키보드 입력 소스가 한글인지 2단계로 판별한다.
 /// 1차: kTISPropertyInputSourceLanguages 배열에 "ko" 포함 여부
@@ -31,7 +34,7 @@ func isKoreanInputSourceActive() -> Bool {
 /// isKoreanInputSourceActive()가 false를 반환할 때 호출하여 누락 입력기를 조기에 발견한다.
 func logCurrentInputSource() {
     guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else {
-        NSLog("[DEBUG] InputSource: unable to get current input source")
+        log.warning("Unable to get current input source")
         return
     }
 
@@ -49,5 +52,5 @@ func logCurrentInputSource() {
         languages = Unmanaged<CFArray>.fromOpaque(langPtr).takeUnretainedValue() as? [String] ?? []
     }
 
-    NSLog("[DEBUG] InputSource: id=%@ name=%@ languages=%@", id, name, languages.joined(separator: ","))
+    log.debug("Current input source: id=\(id) name=\(name) languages=\(languages.joined(separator: ","))")
 }

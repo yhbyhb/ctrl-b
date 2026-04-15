@@ -1,8 +1,12 @@
 import Cocoa
 import CoreGraphics
 import CtrlBHelperCore
+import os
+
+private let log = Logger(subsystem: "com.yhbyhb.ctrl-b-helper", category: "EventTap")
 
 final class EventTapManager {
+    /// 합성 이벤트 식별용 sentinel ("CBHRMAP" in ASCII)
     private static let sentinel: Int64 = 0x4342_4852_4D4150
     private let targetModifiers: CGEventFlags = [.maskControl]
 
@@ -24,7 +28,7 @@ final class EventTapManager {
 
     func start() {
         let trusted = AXIsProcessTrusted()
-        NSLog("[DEBUG] Accessibility trusted: %@", trusted ? "YES" : "NO")
+        log.info("Accessibility trusted: \(trusted ? "YES" : "NO")")
 
         let eventMask: CGEventMask =
             (1 << CGEventType.keyDown.rawValue) |
@@ -42,17 +46,17 @@ final class EventTapManager {
             callback: tapCallback,
             userInfo: selfPtr
         ) else {
-            NSLog("[DEBUG] CGEvent.tapCreate FAILED — no accessibility permission?")
+            log.error("CGEvent.tapCreate failed — no accessibility permission?")
             showAccessibilityAlert()
             return
         }
 
-        NSLog("[DEBUG] CGEvent.tapCreate SUCCESS")
+        log.info("CGEvent.tapCreate succeeded")
         eventTap = tap
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
-        NSLog("[DEBUG] Event tap enabled and added to run loop")
+        log.info("Event tap enabled and added to run loop")
     }
 
     func stop() {
@@ -93,11 +97,7 @@ final class EventTapManager {
         }
 
         // 한글 입력 소스 체크
-        if !isKoreanInputSourceActive() {
-            // Ctrl+알파벳 keyDown인데 한글 감지 실패 → 누락 입력기 디버깅용 로그 (keyDown만, 1회)
-            if type == .keyDown {
-                logCurrentInputSource()
-            }
+        guard isKoreanInputSourceActive() else {
             return Unmanaged.passRetained(event)
         }
 
@@ -112,10 +112,7 @@ final class EventTapManager {
         newEvent.flags = event.flags
         newEvent.setIntegerValueField(.eventSourceUserData, value: Self.sentinel)
 
-        NSLog("[DEBUG] REMAP: keyCode=%d type=%@ flags=0x%llX → synthetic event posted",
-              keyCode,
-              type == .keyDown ? "keyDown" : "keyUp",
-              event.flags.rawValue)
+        log.debug("REMAP: keyCode=\(keyCode) type=\(type == .keyDown ? "keyDown" : "keyUp") flags=0x\(String(event.flags.rawValue, radix: 16))")
 
         newEvent.post(tap: .cghidEventTap)
 
