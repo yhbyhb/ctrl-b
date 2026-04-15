@@ -29,7 +29,7 @@
 | 항목 | Claude 플랜 | Ultraplan |
 |------|------------|-----------|
 | 대상 | ㅠ, ᅲ 2개만 | Hangul Jamo 전체 (0x1100–0x11FF, 0x3130–0x318F, 0xAC00–0xD7A3) |
-| 키 매핑 | Ctrl+ㅠ → Ctrl+B만 | **전체 알파벳 keyCode 테이블** (a–z 전부) |
+| 키 매핑 | Ctrl+ㅠ → Ctrl+b만 | **전체 알파벳 keyCode 테이블** (a–z 전부) |
 
 → **Ultraplan 우세**: `Ctrl+ㄴ`, `Ctrl+ㄱ` 등 다른 Ctrl+한글 조합도 자동으로 처리
 

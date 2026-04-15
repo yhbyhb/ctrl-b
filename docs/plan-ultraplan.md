@@ -2,7 +2,7 @@
 
 ## Context
 
-macOS Korean IME 활성 상태에서 Ctrl+B를 누르면, 'B' 키의 한글 자음(ㅠ, U+3160)이 Ctrl 조합과 함께 앱에 전달된다. 앱은 Ctrl+B가 아닌 Ctrl+ㅠ를 받게 되므로 vim의 `<C-b>` (page up) 등 Ctrl 단축키가 동작하지 않는다.
+macOS Korean IME 활성 상태에서 Ctrl+b를 누르면, 'B' 키의 한글 자음(ㅠ, U+3160)이 Ctrl 조합과 함께 앱에 전달된다. 앱은 Ctrl+b가 아닌 Ctrl+ㅠ를 받게 되므로 vim의 `<C-b>` (page up) 등 Ctrl 단축키가 동작하지 않는다.
 
 CGEventTap으로 앱 전달 전에 이벤트를 가로채어, Ctrl+한글 → Ctrl+영문자로 교정한다. 메뉴바 앱으로 상주하며 리매핑 횟수·절약 시간 통계를 표시한다.
 
@@ -23,7 +23,7 @@ CGEventTap으로 앱 전달 전에 이벤트를 가로채어, Ctrl+한글 → Ct
                     │
               statisticsManager.record()
                     │
-                    └──→ [target app receives Ctrl+B]
+                    └──→ [target app receives Ctrl+b]
 ```
 
 ---
@@ -79,7 +79,7 @@ guard length > 0, isHangul(chars[0]) else { return passthrough }
 let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
 guard let ascii = keyCodeToLowerASCII[keyCode] else { return passthrough }
 
-var ctrl = UniChar(ascii & 0x1F)   // Ctrl+B = 0x02
+var ctrl = UniChar(ascii & 0x1F)   // Ctrl+b = 0x02
 event.keyboardSetUnicodeString(stringLength: 1, unicodeString: &ctrl)
 
 statisticsManager.recordRemap()
@@ -119,10 +119,10 @@ var formattedTimeSaved: String  // 60초 미만→"N.Ns", 미만 1시간→"N.Nm
 
 ### StatusBarController.swift
 
-- 버튼 타이틀: `"⌃B"` (고정 텍스트, 심플)
+- 버튼 타이틀: `"⌃b"` (고정 텍스트, 심플)
 - 메뉴 항목 (매번 갱신):
   ```
-  Ctrl+ㅠ → Ctrl+B 리매핑       (disabled header)
+  Ctrl+ㅠ → Ctrl+b 리매핑       (disabled header)
   ─────────────────────────────
   리매핑 횟수: 42회              (disabled)
   절약한 시간: 21.0초            (disabled)
@@ -199,9 +199,9 @@ install: build
 make build
 
 # 앱 실행 후:
-# 1. 메뉴바에 ⌃B 아이콘 확인
+# 1. 메뉴바에 ⌃b 아이콘 확인
 # 2. System Settings > Accessibility에 ctrl-b-helper 추가 허용
-# 3. 한글 IME 켠 상태에서 vim/터미널에서 Ctrl+B 입력
+# 3. 한글 IME 켠 상태에서 vim/터미널에서 Ctrl+b 입력
 # 4. vim page-up 동작 확인
 # 5. 메뉴바 클릭 → "리매핑 횟수: 1회" 표시 확인
 # 6. 통계 초기화 → 횟수 0 확인

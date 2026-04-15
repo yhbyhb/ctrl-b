@@ -6,8 +6,8 @@ import Foundation
 
 let sentinel: Int64 = 0x4342_4852_4D4150
 
-// Test 1: Ctrl+B (keyDown) — 한글 활성이므로 재작성 대상
-print("=== Test 1: Ctrl+B keyDown (한글 활성 → 재작성 대상) ===")
+// Test 1: Ctrl+b (keyDown) — 한글 활성이므로 재작성 대상
+print("=== Test 1: Ctrl+b keyDown (한글 활성 → 재작성 대상) ===")
 if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: true) {
     event.flags = .maskControl
     var yu: UniChar = 0x3160
@@ -17,8 +17,8 @@ if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: true) 
 }
 usleep(300_000)
 
-// Test 2: Ctrl+B (keyUp) — 한글 활성이므로 재작성 대상
-print("=== Test 2: Ctrl+B keyUp (한글 활성 → 재작성 대상) ===")
+// Test 2: Ctrl+b (keyUp) — 한글 활성이므로 재작성 대상
+print("=== Test 2: Ctrl+b keyUp (한글 활성 → 재작성 대상) ===")
 if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: false) {
     event.flags = .maskControl
     event.post(tap: .cgSessionEventTap)

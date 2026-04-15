@@ -2,7 +2,7 @@
 
 ## 문제 정의
 
-macOS에서 한글 IME가 활성화된 상태로 Ctrl+B를 누르면, 터미널(tmux 등)에서 해당 단축키가 동작하지 않는다.
+macOS에서 한글 IME가 활성화된 상태로 Ctrl+b를 누르면, 터미널(tmux 등)에서 해당 단축키가 동작하지 않는다.
 
 ## 디버깅 결과
 
@@ -11,8 +11,8 @@ CGEventTap에 디버그 로그를 추가하여 실제 이벤트를 관찰한 결
 ### CGEvent 레벨에서는 문제 없음
 
 ```
-한글 IME + Ctrl+B → keyCode=11 flags=[Ctrl] chars=[U+0002]  ← 이미 정상
-영문    + Ctrl+B → keyCode=11 flags=[Ctrl] chars=[U+0002]  ← 동일
+한글 IME + Ctrl+b → keyCode=11 flags=[Ctrl] chars=[U+0002]  ← 이미 정상
+영문    + Ctrl+b → keyCode=11 flags=[Ctrl] chars=[U+0002]  ← 동일
 한글 IME + B (Ctrl 없음) → keyCode=11 flags=[] chars=[U+3160]  ← ㅠ
 ```
 
@@ -37,9 +37,9 @@ CGEvent (U+0002 정상)
 
 | 환경 | 결과 | 의미 |
 |------|------|------|
-| Ghostty + `cat` + 한글 + Ctrl+B | ^B 정상 출력 | cooked 모드에서는 IME가 정상 전달 |
-| Ghostty + tmux + 한글 + Ctrl+B | **무반응** | raw 모드에서 IME가 이벤트 소비 |
-| Terminal.app + tmux + 한글 + Ctrl+B | **안 됨** | 터미널 종류 무관, 공통 문제 |
+| Ghostty + `cat` + 한글 + Ctrl+b | ^B 정상 출력 | cooked 모드에서는 IME가 정상 전달 |
+| Ghostty + tmux + 한글 + Ctrl+b | **무반응** | raw 모드에서 IME가 이벤트 소비 |
+| Terminal.app + tmux + 한글 + Ctrl+b | **안 됨** | 터미널 종류 무관, 공통 문제 |
 
 ---
 

@@ -14,7 +14,7 @@ final class EventTapManager {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
-    private let prefixKeyCode: Int64 = 11  // Ctrl+B (향후 설정 가능)
+    private let prefixKeyCode: Int64 = 11  // Ctrl+b (향후 설정 가능)
     private var pendingFollowUp = false
     private var followUpTimer: DispatchWorkItem?
     private let followUpTimeout: TimeInterval = 1.5
@@ -167,7 +167,7 @@ final class EventTapManager {
         if type == .keyDown {
             statisticsManager.recordRemap()
 
-            // prefix 키(Ctrl+B) 리매핑 시 follow-up 활성화
+            // prefix 키(Ctrl+b) 리매핑 시 follow-up 활성화
             if keyCode == prefixKeyCode {
                 pendingFollowUp = true
                 followUpTimer?.cancel()

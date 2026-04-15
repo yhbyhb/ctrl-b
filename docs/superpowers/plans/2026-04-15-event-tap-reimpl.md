@@ -258,8 +258,8 @@ import Foundation
 
 let sentinel: Int64 = 0x4342_4852_4D4150
 
-// Test 1: Ctrl+B (keyDown) — 한글 활성이므로 재작성 대상
-print("=== Test 1: Ctrl+B keyDown (한글 활성 → 재작성 대상) ===")
+// Test 1: Ctrl+b (keyDown) — 한글 활성이므로 재작성 대상
+print("=== Test 1: Ctrl+b keyDown (한글 활성 → 재작성 대상) ===")
 if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: true) {
     event.flags = .maskControl
     var yu: UniChar = 0x3160
@@ -269,8 +269,8 @@ if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: true) 
 }
 usleep(300_000)
 
-// Test 2: Ctrl+B (keyUp) — 한글 활성이므로 재작성 대상
-print("=== Test 2: Ctrl+B keyUp (한글 활성 → 재작성 대상) ===")
+// Test 2: Ctrl+b (keyUp) — 한글 활성이므로 재작성 대상
+print("=== Test 2: Ctrl+b keyUp (한글 활성 → 재작성 대상) ===")
 if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: false) {
     event.flags = .maskControl
     event.post(tap: .cgSessionEventTap)
@@ -372,22 +372,22 @@ make app && open ctrl-b-helper.app
 
 다음을 순서대로 실행하고 결과를 기록:
 
-1. Ghostty + tmux + 한글 2벌식 → Ctrl+B → tmux prefix 진입? (PASS/FAIL)
-2. Terminal.app + tmux + 한글 2벌식 → Ctrl+B → tmux prefix 진입? (PASS/FAIL)
+1. Ghostty + tmux + 한글 2벌식 → Ctrl+b → tmux prefix 진입? (PASS/FAIL)
+2. Terminal.app + tmux + 한글 2벌식 → Ctrl+b → tmux prefix 진입? (PASS/FAIL)
 3. Ghostty + tmux + 한글 2벌식 → Ctrl+C → 프로세스 종료? (PASS/FAIL)
-4. Ghostty + tmux + 영문 ABC → Ctrl+B → tmux prefix 진입, 회귀 없음? (PASS/FAIL)
-5. Ghostty + vim + 한글 2벌식 → Ctrl+B → page up? (PASS/FAIL)
+4. Ghostty + tmux + 영문 ABC → Ctrl+b → tmux prefix 진입, 회귀 없음? (PASS/FAIL)
+5. Ghostty + vim + 한글 2벌식 → Ctrl+b → page up? (PASS/FAIL)
 
 - [ ] **Step 3: 비대상 키 테스트 (스펙 테스트 #6-8)**
 
 6. 한글 2벌식 → Ctrl+Space → 입력 소스 전환? (PASS/FAIL)
 7. 한글 2벌식 → Ctrl+화살표 → 커서 이동? (PASS/FAIL)
-8. 영문 ABC → Ctrl+B → 이벤트 재작성 없음? (PASS/FAIL — 로그에 REMAP 없어야 함)
+8. 영문 ABC → Ctrl+b → 이벤트 재작성 없음? (PASS/FAIL — 로그에 REMAP 없어야 함)
 
 - [ ] **Step 4: 통계 테스트 (스펙 테스트 #12-13)**
 
-12. 통계 초기화 → 한글 + Ctrl+B 3회 → 메뉴바 카운트 = 3? (PASS/FAIL — 6이면 FAIL)
-13. 영문 + Ctrl+B 3회 → 카운트 변화 없음? (PASS/FAIL)
+12. 통계 초기화 → 한글 + Ctrl+b 3회 → 메뉴바 카운트 = 3? (PASS/FAIL — 6이면 FAIL)
+13. 영문 + Ctrl+b 3회 → 카운트 변화 없음? (PASS/FAIL)
 
 - [ ] **Step 5: 테스트 FAIL 시 대응**
 

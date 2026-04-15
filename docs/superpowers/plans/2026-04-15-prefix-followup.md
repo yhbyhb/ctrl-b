@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** tmux prefix(Ctrl+B) 리매핑 직후 다음 1개 알파벳 키도 한글→영문으로 리매핑하여, `Ctrl+B, n` 같은 tmux 명령이 한글 IME에서도 동작하게 한다.
+**Goal:** tmux prefix(Ctrl+b) 리매핑 직후 다음 1개 알파벳 키도 한글→영문으로 리매핑하여, `Ctrl+b, n` 같은 tmux 명령이 한글 IME에서도 동작하게 한다.
 
-**Architecture:** `EventTapManager`에 `pendingFollowUp` 플래그와 1.5초 타이머를 추가. Ctrl+B 리매핑 발생 시 플래그 설정, 다음 modifier 없는 알파벳 keyDown을 consume+recreate로 리매핑한 뒤 플래그 리셋.
+**Architecture:** `EventTapManager`에 `pendingFollowUp` 플래그와 1.5초 타이머를 추가. Ctrl+b 리매핑 발생 시 플래그 설정, 다음 modifier 없는 알파벳 keyDown을 consume+recreate로 리매핑한 뒤 플래그 리셋.
 
 **Tech Stack:** Swift 5.9, SPM, CoreGraphics (CGEventTap), DispatchWorkItem
 
@@ -32,7 +32,7 @@
 `EventTapManager` 클래스의 `private var runLoopSource` 아래에 추가:
 
 ```swift
-    private let prefixKeyCode: Int64 = 11  // Ctrl+B (향후 설정 가능)
+    private let prefixKeyCode: Int64 = 11  // Ctrl+b (향후 설정 가능)
     private var pendingFollowUp = false
     private var followUpTimer: DispatchWorkItem?
     private let followUpTimeout: TimeInterval = 1.5
@@ -52,12 +52,12 @@ git commit -m "feat: add prefix follow-up state properties to EventTapManager"
 
 ---
 
-### Task 2: Follow-up 플래그 설정 (Ctrl+B 리매핑 시)
+### Task 2: Follow-up 플래그 설정 (Ctrl+b 리매핑 시)
 
 **Files:**
 - Modify: `Sources/ctrl_b_helper/EventTapManager.swift`
 
-- [ ] **Step 1: handleKeyEvent에서 Ctrl+B keyDown 리매핑 후 follow-up 활성화**
+- [ ] **Step 1: handleKeyEvent에서 Ctrl+b keyDown 리매핑 후 follow-up 활성화**
 
 현재 `handleKeyEvent`의 통계 기록 부분 (line 119-122):
 
@@ -75,7 +75,7 @@ git commit -m "feat: add prefix follow-up state properties to EventTapManager"
         if type == .keyDown {
             statisticsManager.recordRemap()
 
-            // prefix 키(Ctrl+B) 리매핑 시 follow-up 활성화
+            // prefix 키(Ctrl+b) 리매핑 시 follow-up 활성화
             if keyCode == prefixKeyCode {
                 pendingFollowUp = true
                 followUpTimer?.cancel()
@@ -98,7 +98,7 @@ Expected: `Build complete!`
 
 ```bash
 git add Sources/ctrl_b_helper/EventTapManager.swift
-git commit -m "feat: arm follow-up flag after Ctrl+B remap"
+git commit -m "feat: arm follow-up flag after Ctrl+b remap"
 ```
 
 ---
@@ -209,23 +209,23 @@ make app && make install && open /Applications/ctrl-b-helper.app
 
 한글 2벌식으로 전환 후:
 
-1. Ghostty + tmux → Ctrl+B → n → next-window 실행? (PASS/FAIL)
-2. Ghostty + tmux → Ctrl+B → c → new-window 실행? (PASS/FAIL)
-3. Ghostty + tmux → Ctrl+B → p → previous-window 실행? (PASS/FAIL)
-4. Ghostty + tmux → Ctrl+B → [ → copy mode 진입? (PASS/FAIL — 기호, 기존 동작)
-5. Ghostty + tmux → Ctrl+B → d → detach? (PASS/FAIL)
+1. Ghostty + tmux → Ctrl+b → n → next-window 실행? (PASS/FAIL)
+2. Ghostty + tmux → Ctrl+b → c → new-window 실행? (PASS/FAIL)
+3. Ghostty + tmux → Ctrl+b → p → previous-window 실행? (PASS/FAIL)
+4. Ghostty + tmux → Ctrl+b → [ → copy mode 진입? (PASS/FAIL — 기호, 기존 동작)
+5. Ghostty + tmux → Ctrl+b → d → detach? (PASS/FAIL)
 
 - [ ] **Step 3: 엣지 케이스 테스트 (스펙 테스트 #6-10)**
 
-6. 한글 → Ctrl+B → (2초 대기) → 한글 입력 → 한글 정상? (PASS/FAIL)
-7. 한글 → Ctrl+B → Enter → Enter 통과, 한글 정상? (PASS/FAIL)
-8. 한글 → Ctrl+B → Ctrl+B → 두 번째 Ctrl+B 정상? (PASS/FAIL)
-9. 영문 → Ctrl+B → n → 기존 동작, 간섭 없음? (PASS/FAIL)
+6. 한글 → Ctrl+b → (2초 대기) → 한글 입력 → 한글 정상? (PASS/FAIL)
+7. 한글 → Ctrl+b → Enter → Enter 통과, 한글 정상? (PASS/FAIL)
+8. 한글 → Ctrl+b → Ctrl+b → 두 번째 Ctrl+b 정상? (PASS/FAIL)
+9. 영문 → Ctrl+b → n → 기존 동작, 간섭 없음? (PASS/FAIL)
 10. 한글 → Ctrl+C → 한글 입력 → 한글 정상? (PASS/FAIL — follow-up 없어야 함)
 
 - [ ] **Step 4: 통계 테스트 (스펙 테스트 #11)**
 
-11. 통계 초기화 → 한글 + Ctrl+B → n → 카운트 +2? (PASS/FAIL — Ctrl+B 1회 + follow-up n 1회)
+11. 통계 초기화 → 한글 + Ctrl+b → n → 카운트 +2? (PASS/FAIL — Ctrl+b 1회 + follow-up n 1회)
 
 - [ ] **Step 5: 테스트 FAIL 시 대응**
 
@@ -240,7 +240,7 @@ make app && make install && open /Applications/ctrl-b-helper.app
 ```bash
 git commit --allow-empty -m "test: manual testing for prefix follow-up - all PASS
 
-Tested: Ctrl+B → n/c/p/d (tmux commands), Ctrl+B → [ (symbol passthrough),
-timeout expiry, Enter dismissal, Ctrl+B → Ctrl+B retry, Ctrl+C no follow-up,
+Tested: Ctrl+b → n/c/p/d (tmux commands), Ctrl+b → [ (symbol passthrough),
+timeout expiry, Enter dismissal, Ctrl+b → Ctrl+b retry, Ctrl+C no follow-up,
 English mode no interference, statistics accuracy (+2 for prefix+follow-up)"
 ```
