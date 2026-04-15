@@ -95,7 +95,7 @@ final class EventTapManager {
 
         guard hasNoModifiers,
               let ascii = keyCodeToLowerASCII[followUpKeyCode],
-              isCJKInputSourceActive() else {
+              isInputMethodActive() else {
             log.debug("Follow-up dismissed: keyCode=\(followUpKeyCode) hasNoModifiers=\(hasNoModifiers)")
             return Unmanaged.passRetained(event)
         }
@@ -144,7 +144,7 @@ final class EventTapManager {
         }
 
         // 한글 입력 소스 체크
-        guard isCJKInputSourceActive() else {
+        guard isInputMethodActive() else {
             return Unmanaged.passRetained(event)
         }
 
