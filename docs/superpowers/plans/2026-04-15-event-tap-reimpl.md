@@ -153,7 +153,11 @@ fileprivate func handleKeyEvent(_ event: CGEvent, type: CGEventType) -> Unmanage
     }
 
     // 한글 입력 소스 체크
-    guard isKoreanInputSourceActive() else {
+    if !isKoreanInputSourceActive() {
+        // Ctrl+알파벳 keyDown인데 한글 감지 실패 → 누락 입력기 디버깅용 로그 (keyDown만, 1회)
+        if type == .keyDown {
+            logCurrentInputSource()
+        }
         return Unmanaged.passRetained(event)
     }
 
@@ -212,12 +216,10 @@ private func tapCallback(
 
 - [ ] **Step 4: 디버그 전용 NSLog 중 이전 디버그 로그 제거**
 
-Task 2 이전에 추가한 디버그 로그(flagDesc, charHex 등)가 남아 있으면 모두 제거한다. `handleKeyEvent` 내의 `NSLog("[DEBUG] REMAP:...")`만 남긴다.
-
-`start()` 내의 접근성/탭 생성 NSLog 3줄도 제거한다:
-- `[DEBUG] Accessibility trusted:`
-- `[DEBUG] CGEvent.tapCreate`
-- `[DEBUG] Event tap enabled`
+Task 2 이전에 추가한 디버그 로그(flagDesc, charHex 등)가 남아 있으면 모두 제거한다. 다음은 **유지**:
+- `handleKeyEvent` 내의 `NSLog("[DEBUG] REMAP:...")`
+- `handleKeyEvent` 내의 `logCurrentInputSource()` 호출
+- `start()` 내의 접근성/탭 생성 NSLog 3줄 (`Accessibility trusted`, `tapCreate`, `Event tap enabled`) — 수동 테스트 단계에서 탭 생성 실패/권한 문제를 진단하는 데 필요하므로 Task 5까지 유지
 
 - [ ] **Step 5: 빌드 확인**
 
@@ -245,18 +247,19 @@ git commit -m "feat: rewrite EventTapManager to consume+recreate events for Kore
 
 - [ ] **Step 1: 시뮬레이션 스크립트를 새 로직에 맞게 업데이트**
 
-`debug_simulate.swift`를 다음으로 교체:
+`debug_simulate.swift`를 다음으로 교체. 이 스크립트는 **한글 입력 소스가 활성인 상태에서 실행**하는 것을 전제로 한다. 영문 상태 테스트는 Step 2b에서 별도로 진행한다.
 
 ```swift
 #!/usr/bin/env swift
 // 새 이벤트 재생성 로직 검증용 시뮬레이션
+// 전제: 한글 입력 소스(2벌식 등)가 활성인 상태에서 실행
 import CoreGraphics
 import Foundation
 
 let sentinel: Int64 = 0x4342_4852_4D4150
 
-// Test 1: 한글 IME Ctrl+B (keyDown) — 재작성 대상
-print("=== Test 1: Ctrl+ㅠ (keyDown, 재작성 대상) ===")
+// Test 1: Ctrl+B (keyDown) — 한글 활성이므로 재작성 대상
+print("=== Test 1: Ctrl+B keyDown (한글 활성 → 재작성 대상) ===")
 if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: true) {
     event.flags = .maskControl
     var yu: UniChar = 0x3160
@@ -266,8 +269,8 @@ if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: true) 
 }
 usleep(300_000)
 
-// Test 2: 한글 IME Ctrl+B (keyUp) — 재작성 대상
-print("=== Test 2: Ctrl+ㅠ (keyUp, 재작성 대상) ===")
+// Test 2: Ctrl+B (keyUp) — 한글 활성이므로 재작성 대상
+print("=== Test 2: Ctrl+B keyUp (한글 활성 → 재작성 대상) ===")
 if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: false) {
     event.flags = .maskControl
     event.post(tap: .cgSessionEventTap)
@@ -275,19 +278,8 @@ if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: false)
 }
 usleep(300_000)
 
-// Test 3: 영문 Ctrl+B — 재작성 안 함 (한글 아님)
-print("=== Test 3: Ctrl+B (영문, 통과) ===")
-if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: true) {
-    event.flags = .maskControl
-    var ctrlB: UniChar = 0x0002
-    event.keyboardSetUnicodeString(stringLength: 1, unicodeString: &ctrlB)
-    event.post(tap: .cgSessionEventTap)
-    print("  Posted: keyCode=11, flags=Ctrl, char=U+0002")
-}
-usleep(300_000)
-
-// Test 4: Ctrl+Space — 알파벳 아님, 통과
-print("=== Test 4: Ctrl+Space (비대상, 통과) ===")
+// Test 3: Ctrl+Space — 알파벳 아님, 입력 소스 무관하게 항상 통과
+print("=== Test 3: Ctrl+Space (비알파벳 → 항상 통과) ===")
 if let event = CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: true) {
     event.flags = .maskControl
     var space: UniChar = 0x0020
@@ -297,8 +289,8 @@ if let event = CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: true) 
 }
 usleep(300_000)
 
-// Test 5: sentinel이 있는 이벤트 — 합성 이벤트, 통과
-print("=== Test 5: Sentinel 이벤트 (합성, 통과) ===")
+// Test 4: sentinel이 있는 이벤트 — 합성 이벤트, 항상 통과
+print("=== Test 4: Sentinel 이벤트 (합성 → 항상 통과) ===")
 if let event = CGEvent(keyboardEventSource: nil, virtualKey: 11, keyDown: true) {
     event.flags = .maskControl
     event.setIntegerValueField(.eventSourceUserData, value: sentinel)
@@ -310,36 +302,44 @@ usleep(300_000)
 print("\n=== Done ===")
 ```
 
-- [ ] **Step 2: 앱 실행 + 시뮬레이션 실행 + 로그 확인**
+- [ ] **Step 2a: 한글 입력 소스 활성 상태에서 시뮬레이션 실행**
+
+**사전 조건:** 시스템 입력 소스를 한글 2벌식으로 전환한 후 실행.
 
 ```bash
-# 기존 프로세스 정리
 pkill -f ctrl-b-helper 2>/dev/null; sleep 1
-
-# 빌드 + 실행
 swift build -c release 2>&1 && \
 .build/release/ctrl-b-helper > /tmp/ctrl-b-debug.log 2>&1 &
 APP_PID=$!; sleep 2
-
-# 시뮬레이션
 swift debug_simulate.swift 2>&1; sleep 1
-
-# 로그 확인
-echo "========== APP LOG =========="
+echo "========== APP LOG (한글) =========="
 cat /tmp/ctrl-b-debug.log
-
-# 정리
 kill $APP_PID 2>/dev/null
 ```
 
-Expected 로그 패턴:
-- Test 1: `[DEBUG] REMAP: keyCode=11 type=keyDown` (재작성 발생) — **단, 한글 IME가 활성일 때만. 영문이면 통과**
-- Test 2: `[DEBUG] REMAP: keyCode=11 type=keyUp` (동일 조건)
-- Test 3: 재작성 없음 (영문이므로 `isKoreanInputSourceActive()` false)
-- Test 4: 재작성 없음 (keyCode 49는 `keyCodeToLowerASCII`에 없음)
-- Test 5: 재작성 없음 (sentinel 매치로 통과)
+Expected:
+- Test 1: `[DEBUG] REMAP: keyCode=11 type=keyDown` (재작성 발생)
+- Test 2: `[DEBUG] REMAP: keyCode=11 type=keyUp` (재작성 발생)
+- Test 3: REMAP 없음 (keyCode 49는 알파벳이 아님)
+- Test 4: REMAP 없음 (sentinel 매치)
 
-**참고:** 시뮬레이션은 현재 시스템의 실제 입력 소스 상태에 따라 결과가 달라진다. 한글 IME 활성 상태에서 실행해야 Test 1, 2에서 REMAP 로그가 나온다.
+- [ ] **Step 2b: 영문 입력 소스 활성 상태에서 시뮬레이션 실행**
+
+**사전 조건:** 시스템 입력 소스를 영문 ABC로 전환한 후 실행.
+
+```bash
+pkill -f ctrl-b-helper 2>/dev/null; sleep 1
+.build/release/ctrl-b-helper > /tmp/ctrl-b-debug-en.log 2>&1 &
+APP_PID=$!; sleep 2
+swift debug_simulate.swift 2>&1; sleep 1
+echo "========== APP LOG (영문) =========="
+cat /tmp/ctrl-b-debug-en.log
+kill $APP_PID 2>/dev/null
+```
+
+Expected:
+- Test 1, 2: REMAP 없음 (영문이므로 `isKoreanInputSourceActive()` false)
+- Test 3, 4: REMAP 없음 (동일)
 
 - [ ] **Step 3: 커밋**
 
@@ -416,11 +416,14 @@ if type == .keyDown, let ascii = keyCodeToLowerASCII[keyCode] {
 
 - [ ] **Step 1: EventTapManager에서 디버그 NSLog 제거**
 
-`handleKeyEvent` 내의 `NSLog("[DEBUG] REMAP:...")` 줄을 삭제한다.
+다음을 모두 삭제:
+- `handleKeyEvent` 내의 `NSLog("[DEBUG] REMAP:...")` 줄
+- `handleKeyEvent` 내의 `logCurrentInputSource()` 호출
+- `start()` 내의 `NSLog("[DEBUG] Accessibility trusted:...")`, `NSLog("[DEBUG] CGEvent.tapCreate...")`, `NSLog("[DEBUG] Event tap enabled...")` 3줄
 
-- [ ] **Step 2: InputSourceUtils에서 logCurrentInputSource() 함수는 유지**
+- [ ] **Step 2: InputSourceUtils에서 logCurrentInputSource() 함수 자체는 유지**
 
-`logCurrentInputSource()`는 향후 진단용으로 유지한다. 단, `handleKeyEvent`에서 호출하는 부분이 있다면 제거한다 (매 키 입력마다 호출되면 성능 문제).
+`logCurrentInputSource()` 함수 정의는 향후 수동 진단용으로 유지한다. `handleKeyEvent`에서의 호출만 Step 1에서 제거.
 
 - [ ] **Step 3: 빌드 + 테스트 최종 확인**
 
