@@ -1,5 +1,5 @@
 import XCTest
-@testable import CtrlBHelperCore
+@testable import CtrlBCore
 
 final class HangulUtilsTests: XCTestCase {
 

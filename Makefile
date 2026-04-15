@@ -1,4 +1,4 @@
-APP_NAME   = ctrl-b-helper
+APP_NAME   = ctrl-b
 BUNDLE     = $(APP_NAME).app
 BUILD_DIR  = .build/release
 BINARY     = $(BUILD_DIR)/$(APP_NAME)

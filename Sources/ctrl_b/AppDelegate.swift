@@ -1,5 +1,5 @@
 import Cocoa
-import CtrlBHelperCore
+import CtrlBCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController?
