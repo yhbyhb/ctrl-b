@@ -14,6 +14,11 @@ final class EventTapManager {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
+    private let prefixKeyCode: Int64 = 11  // Ctrl+B (향후 설정 가능)
+    private var pendingFollowUp = false
+    private var followUpTimer: DispatchWorkItem?
+    private let followUpTimeout: TimeInterval = 1.5
+
     private(set) var isEnabled: Bool = true {
         didSet {
             if let tap = eventTap {
