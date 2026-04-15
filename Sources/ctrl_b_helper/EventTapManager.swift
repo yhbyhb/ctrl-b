@@ -95,7 +95,7 @@ final class EventTapManager {
 
         guard hasNoModifiers,
               let ascii = keyCodeToLowerASCII[followUpKeyCode],
-              isKoreanInputSourceActive() else {
+              isInputMethodActive() else {
             log.debug("Follow-up dismissed: keyCode=\(followUpKeyCode) hasNoModifiers=\(hasNoModifiers)")
             return Unmanaged.passRetained(event)
         }
@@ -144,7 +144,7 @@ final class EventTapManager {
         }
 
         // 한글 입력 소스 체크
-        guard isKoreanInputSourceActive() else {
+        guard isInputMethodActive() else {
             return Unmanaged.passRetained(event)
         }
 

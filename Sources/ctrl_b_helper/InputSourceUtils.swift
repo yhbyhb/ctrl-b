@@ -1,33 +1,19 @@
 import Carbon
+import CtrlBHelperCore
 import os
 
 private let log = Logger(subsystem: "com.yhbyhb.ctrl-b-helper", category: "InputSource")
 
-/// 현재 활성 키보드 입력 소스가 한글인지 2단계로 판별한다.
-/// 1차: kTISPropertyInputSourceLanguages 배열에 "ko" 포함 여부
-/// 2차: kTISPropertyInputSourceID 문자열에 "Korean" 포함 여부 (language 배열 누락 대비)
-func isKoreanInputSourceActive() -> Bool {
-    guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else {
+/// 현재 활성 키보드 입력 소스가 IME(Input Method)인지 판별한다.
+/// kTISTypeKeyboardInputMode이면 IME → 리매핑 필요
+/// kTISTypeKeyboardLayout이면 단순 키맵 (ABC, AZERTY 등) → 리매핑 불필요
+func isInputMethodActive() -> Bool {
+    guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+          let typePtr = TISGetInputSourceProperty(source, kTISPropertyInputSourceType) else {
         return false
     }
-
-    // 1차: language 배열
-    if let langPtr = TISGetInputSourceProperty(source, kTISPropertyInputSourceLanguages) {
-        let languages = Unmanaged<CFArray>.fromOpaque(langPtr).takeUnretainedValue() as? [String] ?? []
-        if languages.contains("ko") {
-            return true
-        }
-    }
-
-    // 2차: input source ID
-    if let idPtr = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) {
-        let id = Unmanaged<CFString>.fromOpaque(idPtr).takeUnretainedValue() as String
-        if id.localizedCaseInsensitiveContains("korean") {
-            return true
-        }
-    }
-
-    return false
+    let sourceType = Unmanaged<CFString>.fromOpaque(typePtr).takeUnretainedValue() as String
+    return isInputMethod(sourceType)
 }
 
 /// 디버그용: 현재 입력 소스 정보를 로그로 출력한다.
