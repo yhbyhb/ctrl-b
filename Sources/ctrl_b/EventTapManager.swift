@@ -1,9 +1,9 @@
 import Cocoa
 import CoreGraphics
-import CtrlBHelperCore
+import CtrlBCore
 import os
 
-private let log = Logger(subsystem: "com.yhbyhb.ctrl-b-helper", category: "EventTap")
+private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "EventTap")
 
 final class EventTapManager {
     /// 합성 이벤트 식별용 sentinel ("CBHRMAP" in ASCII)
@@ -187,7 +187,7 @@ final class EventTapManager {
         let alert = NSAlert()
         alert.messageText = "손쉬운 사용 권한 필요"
         alert.informativeText = """
-            ctrl-b-helper가 키보드 이벤트를 처리하려면 손쉬운 사용 권한이 필요합니다.
+            CtrlB가 키보드 이벤트를 처리하려면 손쉬운 사용 권한이 필요합니다.
 
             시스템 설정 > 개인 정보 보호 및 보안 > 손쉬운 사용에서 허용해 주세요.
             """

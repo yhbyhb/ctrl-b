@@ -1,8 +1,8 @@
 import Carbon
-import CtrlBHelperCore
+import CtrlBCore
 import os
 
-private let log = Logger(subsystem: "com.yhbyhb.ctrl-b-helper", category: "InputSource")
+private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "InputSource")
 
 /// 현재 활성 키보드 입력 소스가 IME(Input Method)인지 판별한다.
 /// kTISTypeKeyboardInputMode이면 IME → 리매핑 필요

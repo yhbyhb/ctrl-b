@@ -1,14 +1,14 @@
-# ctrl-b-helper
+# CtrlB
 
-A macOS menu bar utility that fixes Ctrl+key shortcuts not working when Korean IME is active.
+A macOS menu bar utility that fixes Ctrl+key shortcuts not working when an input method (IME) is active.
 
 ## The Problem
 
-When macOS Korean IME (e.g. 2-Set Korean) is active, Ctrl+key shortcuts like `Ctrl+B` (tmux prefix) fail silently in terminal emulators. The Korean IME consumes the key event at the `interpretKeyEvents:` layer before the terminal can process it.
+When a macOS IME (e.g. Korean 2-Set, Chinese Pinyin, Japanese Hiragana) is active, Ctrl+key shortcuts like `Ctrl+B` (tmux prefix) fail silently in terminal emulators. The IME consumes the key event at the `interpretKeyEvents:` layer before the terminal can process it.
 
 ## How It Works
 
-ctrl-b-helper runs as a menu bar app and uses a CGEventTap to intercept keyboard events. When it detects a Ctrl+alphabet key press while Korean IME is active, it:
+CtrlB runs as a menu bar app and uses a CGEventTap to intercept keyboard events. When it detects a Ctrl+alphabet key press while an IME is active, it:
 
 1. Consumes the original event (which carries IME metadata)
 2. Creates a clean synthetic CGEvent without IME metadata
@@ -23,7 +23,7 @@ make install
 ```
 
 After launching, grant **Accessibility permission** when prompted:
-System Settings > Privacy & Security > Accessibility > Allow ctrl-b-helper
+System Settings > Privacy & Security > Accessibility > Allow CtrlB
 
 ## Usage
 

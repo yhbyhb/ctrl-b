@@ -1,5 +1,5 @@
 import Cocoa
-import CtrlBHelperCore
+import CtrlBCore
 
 final class StatusBarController: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
