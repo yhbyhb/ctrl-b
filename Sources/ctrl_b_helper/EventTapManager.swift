@@ -86,7 +86,7 @@ final class EventTapManager {
         }
 
         // 대상 modifier 체크 (현재: Ctrl)
-        guard !event.flags.intersection(targetModifiers).isEmpty else {
+        guard !event.flags.isDisjoint(with: targetModifiers) else {
             return Unmanaged.passRetained(event)
         }
 
@@ -134,10 +134,9 @@ final class EventTapManager {
             """
         alert.addButton(withTitle: "시스템 설정 열기")
         alert.addButton(withTitle: "나중에")
-        if alert.runModal() == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(
-                URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-            )
+        if alert.runModal() == .alertFirstButtonReturn,
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
         }
     }
 }

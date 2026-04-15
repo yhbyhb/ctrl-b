@@ -3,7 +3,7 @@ BUNDLE     = $(APP_NAME).app
 BUILD_DIR  = .build/release
 BINARY     = $(BUILD_DIR)/$(APP_NAME)
 
-.PHONY: build app install test clean
+.PHONY: build app install test clean lint lint-fix setup
 
 ## swift build (개발용)
 build:
@@ -29,3 +29,17 @@ test:
 ## 빌드 산출물 정리
 clean:
 	rm -rf .build $(BUNDLE)
+
+## SwiftLint 검사
+lint:
+	swiftlint lint --strict
+
+## SwiftLint 자동 수정
+lint-fix:
+	swiftlint lint --fix
+
+## 개발 환경 초기 설정 (git hooks)
+setup:
+	git config core.hooksPath .githooks
+	chmod +x .githooks/pre-commit
+	@echo "✓ Git hooks configured"

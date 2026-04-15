@@ -10,6 +10,7 @@ final class StatisticsManagerTests: XCTestCase {
         super.setUp()
         // 각 테스트마다 격리된 UserDefaults 사용
         suiteName = "TestSuite_\(UUID().uuidString)"
+        // swiftlint:disable:next force_unwrapping
         testDefaults = UserDefaults(suiteName: suiteName)!
         sut = StatisticsManager(defaults: testDefaults)
     }

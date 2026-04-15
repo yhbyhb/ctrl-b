@@ -1,0 +1,16 @@
+#!/bin/sh
+# SwiftLint pre-commit hook
+# staged된 Swift 파일만 검사
+
+SWIFT_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$')
+
+if [ -z "$SWIFT_FILES" ]; then
+    exit 0
+fi
+
+if ! command -v swiftlint >/dev/null 2>&1; then
+    echo "warning: SwiftLint not installed. Skipping lint."
+    exit 0
+fi
+
+echo "$SWIFT_FILES" | xargs swiftlint lint --strict --quiet

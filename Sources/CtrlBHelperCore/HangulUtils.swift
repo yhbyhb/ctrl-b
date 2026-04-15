@@ -17,9 +17,9 @@ public let keyCodeToLowerASCII: [Int64: UInt8] = [
      5: 103,  // g
      6: 122,  // z
      7: 120,  // x
-     8:  99,  // c
+     8: 99,  // c
      9: 118,  // v
-    11:  98,  // b  ← Ctrl+B (tmux prefix)
+    11: 98,  // b  ← Ctrl+B (tmux prefix)
     12: 113,  // q
     13: 119,  // w
     14: 101,  // e
@@ -34,5 +34,5 @@ public let keyCodeToLowerASCII: [Int64: UInt8] = [
     38: 106,  // j
     40: 107,  // k
     45: 110,  // n
-    46: 109,  // m
+    46: 109  // m
 ]
