@@ -124,7 +124,7 @@ git commit -m "feat: arm follow-up flag after Ctrl+B remap"
             let hasNoModifiers = event.flags.isDisjoint(with: [.maskControl, .maskCommand, .maskAlternate])
 
             if hasNoModifiers,
-               keyCodeToLowerASCII[followUpKeyCode] != nil,
+               let ascii = keyCodeToLowerASCII[followUpKeyCode],
                isKoreanInputSourceActive() {
 
                 guard let source = CGEventSource(stateID: .hidSystemState),
@@ -137,7 +137,11 @@ git commit -m "feat: arm follow-up flag after Ctrl+B remap"
                 newEvent.flags = event.flags
                 newEvent.setIntegerValueField(.eventSourceUserData, value: Self.sentinel)
 
-                log.debug("FOLLOW-UP REMAP: keyCode=\(followUpKeyCode) flags=0x\(String(event.flags.rawValue, radix: 16))")
+                // 명시적 ASCII 유니코드 설정 (필수: keyCode만으로는 IME가 한글로 변환)
+                var asciiChar = UniChar(ascii)
+                newEvent.keyboardSetUnicodeString(stringLength: 1, unicodeString: &asciiChar)
+
+                log.debug("FOLLOW-UP REMAP: keyCode=\(followUpKeyCode) → '\(Character(UnicodeScalar(ascii)))' flags=0x\(String(event.flags.rawValue, radix: 16))")
 
                 newEvent.post(tap: .cghidEventTap)
                 statisticsManager.recordRemap()

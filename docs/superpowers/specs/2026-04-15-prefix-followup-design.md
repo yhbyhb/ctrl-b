@@ -57,11 +57,19 @@ private let followUpTimeout: TimeInterval = 1.5
 1. 기존 Ctrl+알파벳 리매핑 로직 후, keyCode가 `prefixKeyCode`이고 keyDown이면 follow-up 플래그 설정 + 타이머 시작.
 
 2. 메서드 진입 시 `pendingFollowUp`이 true이고 keyDown이면 follow-up 분기:
-   - modifier 없음 + 알파벳 키 + 한글 IME → consume+recreate (sentinel 포함)
+   - modifier 없음 + 알파벳 키 + 한글 IME → consume+recreate (sentinel 포함) + **`keyboardSetUnicodeString`으로 명시적 ASCII 설정**
    - 조건 불일치 → 통과
    - 어느 경우든 플래그 리셋 + 타이머 취소
 
-**follow-up 리매핑은 기존 Ctrl+키 리매핑과 동일한 consume+recreate 기법 사용.** 합성 이벤트에 sentinel을 설정하여 무한루프 방지. 통계도 keyDown에서만 recordRemap().
+**follow-up 리매핑은 Ctrl+키 리매핑과 달리 `keyboardSetUnicodeString`으로 명시적 ASCII를 설정해야 한다.** 스파이크 테스트(`spike_followup.swift`)에서 검증:
+- keyCode만 설정한 합성 이벤트 → 한글 IME가 여전히 ㅜ로 변환 (FAIL)
+- keyCode + `keyboardSetUnicodeString('n')` → 영문 n 입력 (PASS)
+
+Ctrl+키는 modifier가 있어 IME가 이미 제어문자로 처리하므로 명시적 unicode 불필요했지만, modifier 없는 순수 알파벳은 IME가 한글로 변환하므로 명시적 설정이 필수.
+
+`keyCodeToLowerASCII`로 keyCode → ASCII 변환 후 `UniChar`로 설정. keyDown에만 적용, keyUp에는 불필요 (스파이크 테스트에서 keyUp 미설정으로도 정상 동작 확인).
+
+합성 이벤트에 sentinel을 설정하여 무한루프 방지. 통계도 keyDown에서만 recordRemap().
 
 **주의: follow-up 체크는 Ctrl+키 체크보다 먼저 실행.** 순서:
 1. sentinel 체크 (무한루프 방지)
