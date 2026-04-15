@@ -124,6 +124,18 @@ final class EventTapManager {
         // 통계는 keyDown에서만 기록
         if type == .keyDown {
             statisticsManager.recordRemap()
+
+            // prefix 키(Ctrl+B) 리매핑 시 follow-up 활성화
+            if keyCode == prefixKeyCode {
+                pendingFollowUp = true
+                followUpTimer?.cancel()
+                let timer = DispatchWorkItem { [weak self] in
+                    self?.pendingFollowUp = false
+                }
+                followUpTimer = timer
+                DispatchQueue.main.asyncAfter(deadline: .now() + followUpTimeout, execute: timer)
+                log.debug("Follow-up armed for next key (timeout: \(self.followUpTimeout)s)")
+            }
         }
 
         return nil  // 원본 폐기
