@@ -113,7 +113,7 @@ return nil  // 원본 폐기
 합성 이벤트를 `.cghidEventTap`에 post하면 이벤트가 전체 파이프라인을 거치므로 IME가 다시 소비할 가능성이 있다. 폴백 단계:
 
 1. **`.cghidEventTap`에 post** (기본값). 합성 이벤트는 `CGEventSource(stateID: .hidSystemState)`로 생성되어 IME composition 상태와 무관하므로, 터미널이 직접 처리할 가능성이 높다. cmd-eikana(일본어 키보드 도구)가 동일 방식으로 동작 중.
-2. **합성 이벤트에 `keyboardSetUnicodeString`으로 명시적 제어문자(ascii & 0x1F)를 설정하여 `.cghidEventTap`에 post**. 1번과의 차이: 이벤트에 유니코드 문자열이 명시되므로 터미널이 IME를 거치지 않고 직접 해석할 단서가 추가됨.
+2. **합성 이벤트에 `keyboardSetUnicodeString`으로 명시적 제어문자(ascii & 0x1F)를 설정하여 `.cghidEventTap`에 post** (keyDown에만 적용, keyUp에는 불필요). 1번과의 차이: 이벤트에 유니코드 문자열이 명시되므로 터미널이 IME를 거치지 않고 직접 해석할 단서가 추가됨.
 3. **근본적으로 다른 접근이 필요한 경우**: 입력 소스 전환 방식 등 별도 설계 필요 (현재 스펙 범위 밖).
 
 기본값으로 1번을 구현하되, 2번은 테스트 후 필요 시 적용. 참고: `.cgSessionEventTap`에 post하는 것은 우리 탭이 이미 `.cgSessionEventTap`에 걸려 있어 1번과 실질적 차이가 없으므로 폴백으로 유효하지 않다.
@@ -239,4 +239,4 @@ language/ID 2단계 감지로도 커버되지 않는 입력기가 있을 수 있
 
 개발 중 `NSLog`로 다음을 출력:
 - 재작성 발생 시: keyCode, 원본 flags, post 위치
-- `isKoreanInputSourceActive()`가 false 반환 시: 현재 input source ID와 language 배열 (감지 누락 조기 발견)
+- `isKoreanInputSourceActive()`가 false 반환 시: 현재 input source ID, localizedName, language 배열 (감지 누락 조기 발견 — localizedName이 있으면 누락 입력기 식별이 더 쉬움)
