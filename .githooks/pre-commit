@@ -2,7 +2,7 @@
 # SwiftLint pre-commit hook
 # staged된 Swift 파일만 검사
 
-SWIFT_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$')
+SWIFT_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$' | grep -E '^(Sources|Tests)/')
 
 if [ -z "$SWIFT_FILES" ]; then
     exit 0

@@ -291,7 +291,7 @@ A macOS menu bar utility that fixes Ctrl+key shortcuts not working when Korean I
 
 ## The Problem
 
-When macOS Korean IME (e.g. 2-Set Korean) is active, Ctrl+key shortcuts like `Ctrl+B` (tmux prefix) fail silently in terminal emulators. The Korean IME consumes the key event at the `interpretKeyEvents:` layer before the terminal can process it.
+When macOS Korean IME (e.g. 2-Set Korean) is active, Ctrl+key shortcuts like `Ctrl+b` (tmux prefix) fail silently in terminal emulators. The Korean IME consumes the key event at the `interpretKeyEvents:` layer before the terminal can process it.
 
 ## How It Works
 
@@ -314,7 +314,7 @@ System Settings > Privacy & Security > Accessibility > Allow ctrl-b-helper
 
 ## Usage
 
-The app runs in the menu bar with a **⌃B** icon. Click it to:
+The app runs in the menu bar with a **⌃b** icon. Click it to:
 
 - Toggle remapping on/off
 - View remap statistics (today / total)

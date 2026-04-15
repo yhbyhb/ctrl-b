@@ -2,7 +2,7 @@
 
 ## Context
 
-macOS에서 한글 2벌식 IME 활성 상태로 tmux prefix `Ctrl+B`를 누르면  
+macOS에서 한글 2벌식 IME 활성 상태로 tmux prefix `Ctrl+b`를 누르면  
 터미널이 `\x02` 대신 `Ctrl+ㅠ`를 수신해 tmux prefix가 동작하지 않는 문제.
 
 **목표:** 다른 Mac에도 배포 가능한 메뉴바 앱으로 제작.
@@ -51,7 +51,7 @@ ctrl-b-helper/
 ### RemapTable.swift
 ```swift
 let remapTable: [Character: CGKeyCode] = [
-    "\u{3160}": 11,  // ㅠ → b (Ctrl+B = tmux prefix)
+    "\u{3160}": 11,  // ㅠ → b (Ctrl+b = tmux prefix)
     "\u{1172}": 11,  // ᅲ → b (Hangul Jamo 분해형)
 ]
 ```

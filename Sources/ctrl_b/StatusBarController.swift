@@ -16,7 +16,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     // MARK: - Setup
 
     private func setupStatusItem() {
-        statusItem.button?.title = "⌃B"
+        statusItem.button?.title = "⌃b"
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
@@ -34,7 +34,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         menu.removeAllItems()
 
         // 헤더
-        menu.addItem(disabled("Ctrl+ㅠ → Ctrl+B 리매핑"))
+        menu.addItem(disabled("Ctrl+ㅠ → Ctrl+b 리매핑"))
         menu.addItem(.separator())
 
         // 활성화 토글

@@ -13,7 +13,7 @@ final class KeyCodeMappingTests: XCTestCase {
         guard let ascii = keyCodeToLowerASCII[11] else {
             XCTFail("keyCode 11 not found"); return
         }
-        XCTAssertEqual(ascii & 0x1F, 0x02)  // Ctrl+B = STX
+        XCTAssertEqual(ascii & 0x1F, 0x02)  // Ctrl+b = STX
     }
 
     // MARK: - 모든 매핑 값은 소문자 ASCII (a–z)
