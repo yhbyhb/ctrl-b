@@ -60,16 +60,6 @@ public final class StatisticsManager {
         defaults.set(todayString, forKey: todayDateKey)
     }
 
-    // MARK: - Formatting
-
-    public var formattedTimeSaved: String {
-        formatted(seconds: timeSavedSeconds)
-    }
-
-    public var formattedTodayTimeSaved: String {
-        formatted(seconds: todayTimeSavedSeconds)
-    }
-
     // MARK: - Private
 
     private var todayString: String {
@@ -81,16 +71,6 @@ public final class StatisticsManager {
         if saved != todayString {
             defaults.set(0, forKey: todayCountKey)
             defaults.set(todayString, forKey: todayDateKey)
-        }
-    }
-
-    private func formatted(seconds: Double) -> String {
-        if seconds < 60 {
-            return String(format: "%.1f초", seconds)
-        } else if seconds < 3600 {
-            return String(format: "%.1f분", seconds / 60)
-        } else {
-            return String(format: "%.1f시간", seconds / 3600)
         }
     }
 }

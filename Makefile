@@ -16,6 +16,7 @@ app: build
 	cp $(BINARY) $(BUNDLE)/Contents/MacOS/$(APP_NAME)
 	cp Resources/Info.plist $(BUNDLE)/Contents/Info.plist
 	cp Resources/AppIcon.icns $(BUNDLE)/Contents/Resources/AppIcon.icns
+	cp -r $(BUILD_DIR)/CtrlB_CtrlB.bundle $(BUNDLE)/Contents/Resources/ 2>/dev/null || true
 	@echo "✓ $(BUNDLE) 생성 완료"
 
 ## /Applications 에 설치

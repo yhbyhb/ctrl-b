@@ -28,37 +28,41 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         buildMenu(menu)
     }
 
-    // MARK: - Menu 구성
+    // MARK: - Menu
 
     private func buildMenu(_ menu: NSMenu) {
         menu.removeAllItems()
 
-        // 헤더
-        menu.addItem(disabled("Ctrl+ㅠ → Ctrl+b 리매핑"))
+        let localized = { (key: String) in NSLocalizedString(key, bundle: .module, comment: "") }
+
+        // Header
+        menu.addItem(disabled(localized("menu.header")))
         menu.addItem(.separator())
 
-        // 활성화 토글
-        let toggleTitle = eventTap.isEnabled ? "✓ 활성화됨" : "비활성화됨"
+        // Toggle
+        let toggleTitle = eventTap.isEnabled ? localized("menu.enabled") : localized("menu.disabled")
         menu.addItem(action(toggleTitle, #selector(toggleEnabled)))
         menu.addItem(.separator())
 
-        // 오늘 통계
-        menu.addItem(disabled("오늘: \(stats.todayRemapCount)회 · \(stats.formattedTodayTimeSaved) 절약"))
-        // 누계 통계
-        menu.addItem(disabled("누계: \(stats.remapCount)회 · \(stats.formattedTimeSaved) 절약"))
+        // Today stats
+        let todayText = String(format: localized("menu.today"), stats.todayRemapCount, formatTime(stats.todayTimeSavedSeconds))
+        menu.addItem(disabled(todayText))
+        // Cumulative stats
+        let totalText = String(format: localized("menu.total"), stats.remapCount, formatTime(stats.timeSavedSeconds))
+        menu.addItem(disabled(totalText))
         menu.addItem(.separator())
 
-        // 통계 초기화
-        menu.addItem(action("통계 초기화", #selector(resetStats)))
+        // Reset
+        menu.addItem(action(localized("menu.reset"), #selector(resetStats)))
         menu.addItem(.separator())
 
-        // 로그인 시 자동 실행
-        let loginTitle = LaunchAtLoginManager.isEnabled ? "✓ 로그인 시 자동 실행" : "로그인 시 자동 실행"
+        // Launch at login
+        let loginTitle = LaunchAtLoginManager.isEnabled ? localized("menu.login.enabled") : localized("menu.login.disabled")
         menu.addItem(action(loginTitle, #selector(toggleLaunchAtLogin)))
         menu.addItem(.separator())
 
-        // 종료
-        let quit = NSMenuItem(title: "종료", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        // Quit
+        let quit = NSMenuItem(title: localized("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
     }
 
@@ -88,5 +92,16 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
         item.target = self
         return item
+    }
+
+    private func formatTime(_ seconds: Double) -> String {
+        let localized = { (key: String) in NSLocalizedString(key, bundle: .module, comment: "") }
+        if seconds < 60 {
+            return String(format: localized("time.seconds"), seconds)
+        } else if seconds < 3600 {
+            return String(format: localized("time.minutes"), seconds / 60)
+        } else {
+            return String(format: localized("time.hours"), seconds / 3600)
+        }
     }
 }

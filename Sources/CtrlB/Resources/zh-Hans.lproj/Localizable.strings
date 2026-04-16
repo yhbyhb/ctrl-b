@@ -1,0 +1,21 @@
+/* Menu */
+"menu.header" = "Ctrl+键 重映射";
+"menu.enabled" = "✓ 已启用";
+"menu.disabled" = "已停用";
+"menu.today" = "今天: %d次 · 节省%@";
+"menu.total" = "累计: %d次 · 节省%@";
+"menu.reset" = "重置统计";
+"menu.login.enabled" = "✓ 登录时启动";
+"menu.login.disabled" = "登录时启动";
+"menu.quit" = "退出";
+
+/* Accessibility Alert */
+"alert.accessibility.title" = "需要辅助功能权限";
+"alert.accessibility.message" = "CtrlB需要辅助功能权限来拦截键盘事件。\n\n请前往系统设置 > 隐私与安全性 > 辅助功能中允许CtrlB。";
+"alert.accessibility.open" = "打开系统设置";
+"alert.accessibility.later" = "稍后";
+
+/* Time Formatting */
+"time.seconds" = "%.1f秒";
+"time.minutes" = "%.1f分钟";
+"time.hours" = "%.1f小时";

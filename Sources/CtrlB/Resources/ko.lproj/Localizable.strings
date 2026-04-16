@@ -1,0 +1,21 @@
+/* Menu */
+"menu.header" = "Ctrl+ㅠ → Ctrl+b 리매핑";
+"menu.enabled" = "✓ 활성화됨";
+"menu.disabled" = "비활성화됨";
+"menu.today" = "오늘: %d회 · %@ 절약";
+"menu.total" = "누계: %d회 · %@ 절약";
+"menu.reset" = "통계 초기화";
+"menu.login.enabled" = "✓ 로그인 시 자동 실행";
+"menu.login.disabled" = "로그인 시 자동 실행";
+"menu.quit" = "종료";
+
+/* Accessibility Alert */
+"alert.accessibility.title" = "손쉬운 사용 권한 필요";
+"alert.accessibility.message" = "CtrlB가 키보드 이벤트를 처리하려면 손쉬운 사용 권한이 필요합니다.\n\n시스템 설정 > 개인 정보 보호 및 보안 > 손쉬운 사용에서 허용해 주세요.";
+"alert.accessibility.open" = "시스템 설정 열기";
+"alert.accessibility.later" = "나중에";
+
+/* Time Formatting */
+"time.seconds" = "%.1f초";
+"time.minutes" = "%.1f분";
+"time.hours" = "%.1f시간";

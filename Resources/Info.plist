@@ -22,6 +22,15 @@
     <string>AppIcon</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>ko</string>
+        <string>ja</string>
+        <string>zh-Hans</string>
+    </array>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSAppleEventsUsageDescription</key>

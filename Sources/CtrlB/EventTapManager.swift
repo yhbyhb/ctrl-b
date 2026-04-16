@@ -184,15 +184,12 @@ final class EventTapManager {
     }
 
     private func showAccessibilityAlert() {
+        let localized = { (key: String) in NSLocalizedString(key, bundle: .module, comment: "") }
         let alert = NSAlert()
-        alert.messageText = "손쉬운 사용 권한 필요"
-        alert.informativeText = """
-            CtrlB가 키보드 이벤트를 처리하려면 손쉬운 사용 권한이 필요합니다.
-
-            시스템 설정 > 개인 정보 보호 및 보안 > 손쉬운 사용에서 허용해 주세요.
-            """
-        alert.addButton(withTitle: "시스템 설정 열기")
-        alert.addButton(withTitle: "나중에")
+        alert.messageText = localized("alert.accessibility.title")
+        alert.informativeText = localized("alert.accessibility.message")
+        alert.addButton(withTitle: localized("alert.accessibility.open"))
+        alert.addButton(withTitle: localized("alert.accessibility.later"))
         if alert.runModal() == .alertFirstButtonReturn,
            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)

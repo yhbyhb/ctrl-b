@@ -85,35 +85,6 @@ final class StatisticsManagerTests: XCTestCase {
         XCTAssertEqual(sut.todayRemapCount, 0)
     }
 
-    // MARK: - formattedTimeSaved
-
-    func test_format_seconds() {
-        sut.recordRemap()  // 2.0s
-        XCTAssertTrue(sut.formattedTimeSaved.hasSuffix("초"), "Expected 초, got: \(sut.formattedTimeSaved)")
-    }
-
-    func test_format_minutes() {
-        for _ in 0..<31 { sut.recordRemap() }  // 62s → minutes
-        XCTAssertTrue(sut.formattedTimeSaved.hasSuffix("분"), "Expected 분, got: \(sut.formattedTimeSaved)")
-    }
-
-    func test_format_hours() {
-        for _ in 0..<1801 { sut.recordRemap() }  // 3602s → hours
-        XCTAssertTrue(sut.formattedTimeSaved.hasSuffix("시간"), "Expected 시간, got: \(sut.formattedTimeSaved)")
-    }
-
-    func test_format_boundary_59seconds() {
-        // 29 * 2.0 = 58.0s → still seconds
-        for _ in 0..<29 { sut.recordRemap() }
-        XCTAssertTrue(sut.formattedTimeSaved.hasSuffix("초"))
-    }
-
-    func test_format_boundary_60seconds() {
-        // 30 * 2.0 = 60.0s → minutes
-        for _ in 0..<30 { sut.recordRemap() }
-        XCTAssertTrue(sut.formattedTimeSaved.hasSuffix("분"))
-    }
-
     // MARK: - todayTimeSavedSeconds
 
     func test_todayTimeSaved_matchesCount() {

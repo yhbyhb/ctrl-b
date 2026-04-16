@@ -1,0 +1,21 @@
+/* Menu */
+"menu.header" = "Ctrl+key remapping";
+"menu.enabled" = "✓ Enabled";
+"menu.disabled" = "Disabled";
+"menu.today" = "Today: %d times · %@ saved";
+"menu.total" = "Total: %d times · %@ saved";
+"menu.reset" = "Reset Statistics";
+"menu.login.enabled" = "✓ Launch at Login";
+"menu.login.disabled" = "Launch at Login";
+"menu.quit" = "Quit";
+
+/* Accessibility Alert */
+"alert.accessibility.title" = "Accessibility Permission Required";
+"alert.accessibility.message" = "CtrlB needs Accessibility permission to intercept keyboard events.\n\nGo to System Settings > Privacy & Security > Accessibility to allow CtrlB.";
+"alert.accessibility.open" = "Open System Settings";
+"alert.accessibility.later" = "Later";
+
+/* Time Formatting */
+"time.seconds" = "%.1fs";
+"time.minutes" = "%.1fm";
+"time.hours" = "%.1fh";
