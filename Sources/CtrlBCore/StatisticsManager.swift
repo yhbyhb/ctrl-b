@@ -1,32 +1,40 @@
 import Foundation
 
-/// 리매핑 횟수 및 절약 시간 집계 (UserDefaults 영구 저장)
+/// Tracks remap count and estimated time saved (persisted in UserDefaults)
 public final class StatisticsManager {
     private let defaults: UserDefaults
     private let countKey = "remapCount"
-    private let timeSavedKey = "timeSaved"
     private let todayCountKey = "todayRemapCount"
     private let todayDateKey = "todayDate"
 
-    /// 리매핑 1회당 절약되는 시간 추정값 (초)
-    /// 입력기 전환(~3초) + 재입력(~0.5초)
-    public static let secondsPerRemap: Double = 3.5
+    /// Estimated time saved per remap (seconds)
+    /// Noticing failure (~0.5s) + switching IME (~0.5s) + retrying key (~0.5s) + switching back (~0.5s)
+    public static let secondsPerRemap: Double = 2.0
 
-    public init(defaults: UserDefaults = .standard) {
+    private static let dateFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        return fmt
+    }()
+
+    private let now: () -> Date
+
+    public init(defaults: UserDefaults = .standard, now: @escaping () -> Date = { Date() }) {
         self.defaults = defaults
+        self.now = now
     }
 
-    // MARK: - 누계
+    // MARK: - Cumulative
 
     public var remapCount: Int {
         defaults.integer(forKey: countKey)
     }
 
     public var timeSavedSeconds: Double {
-        defaults.double(forKey: timeSavedKey)
+        Double(remapCount) * Self.secondsPerRemap
     }
 
-    // MARK: - 오늘
+    // MARK: - Today
 
     public var todayRemapCount: Int {
         resetTodayIfNeeded()
@@ -37,11 +45,10 @@ public final class StatisticsManager {
         Double(todayRemapCount) * Self.secondsPerRemap
     }
 
-    // MARK: - 기록
+    // MARK: - Record
 
     public func recordRemap() {
         defaults.set(remapCount + 1, forKey: countKey)
-        defaults.set(timeSavedSeconds + Self.secondsPerRemap, forKey: timeSavedKey)
 
         resetTodayIfNeeded()
         defaults.set(defaults.integer(forKey: todayCountKey) + 1, forKey: todayCountKey)
@@ -49,12 +56,11 @@ public final class StatisticsManager {
 
     public func reset() {
         defaults.set(0, forKey: countKey)
-        defaults.set(0.0, forKey: timeSavedKey)
         defaults.set(0, forKey: todayCountKey)
         defaults.set(todayString, forKey: todayDateKey)
     }
 
-    // MARK: - 포맷
+    // MARK: - Formatting
 
     public var formattedTimeSaved: String {
         formatted(seconds: timeSavedSeconds)
@@ -67,9 +73,7 @@ public final class StatisticsManager {
     // MARK: - Private
 
     private var todayString: String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        return fmt.string(from: Date())
+        Self.dateFormatter.string(from: now())
     }
 
     private func resetTodayIfNeeded() {

@@ -8,7 +8,6 @@ final class StatisticsManagerTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        // 각 테스트마다 격리된 UserDefaults 사용
         suiteName = "TestSuite_\(UUID().uuidString)"
         // swiftlint:disable:next force_unwrapping
         testDefaults = UserDefaults(suiteName: suiteName)!
@@ -23,7 +22,7 @@ final class StatisticsManagerTests: XCTestCase {
         super.tearDown()
     }
 
-    // MARK: - 초기값
+    // MARK: - Initial values
 
     func test_initialCount_isZero() {
         XCTAssertEqual(sut.remapCount, 0)
@@ -86,32 +85,32 @@ final class StatisticsManagerTests: XCTestCase {
         XCTAssertEqual(sut.todayRemapCount, 0)
     }
 
-    // MARK: - formattedTimeSaved (누계)
+    // MARK: - formattedTimeSaved
 
     func test_format_seconds() {
-        sut.recordRemap()  // 3.5초
+        sut.recordRemap()  // 2.0s
         XCTAssertTrue(sut.formattedTimeSaved.hasSuffix("초"), "Expected 초, got: \(sut.formattedTimeSaved)")
     }
 
     func test_format_minutes() {
-        for _ in 0..<20 { sut.recordRemap() }  // 70초 → 분 단위
+        for _ in 0..<31 { sut.recordRemap() }  // 62s → minutes
         XCTAssertTrue(sut.formattedTimeSaved.hasSuffix("분"), "Expected 분, got: \(sut.formattedTimeSaved)")
     }
 
     func test_format_hours() {
-        for _ in 0..<1200 { sut.recordRemap() }  // 4200초 → 시간 단위
+        for _ in 0..<1801 { sut.recordRemap() }  // 3602s → hours
         XCTAssertTrue(sut.formattedTimeSaved.hasSuffix("시간"), "Expected 시간, got: \(sut.formattedTimeSaved)")
     }
 
     func test_format_boundary_59seconds() {
-        // 59.5초 = 17회 (17 * 3.5 = 59.5)
-        for _ in 0..<17 { sut.recordRemap() }
+        // 29 * 2.0 = 58.0s → still seconds
+        for _ in 0..<29 { sut.recordRemap() }
         XCTAssertTrue(sut.formattedTimeSaved.hasSuffix("초"))
     }
 
     func test_format_boundary_60seconds() {
-        // 63.0초 = 18회 (18 * 3.5 = 63.0)
-        for _ in 0..<18 { sut.recordRemap() }
+        // 30 * 2.0 = 60.0s → minutes
+        for _ in 0..<30 { sut.recordRemap() }
         XCTAssertTrue(sut.formattedTimeSaved.hasSuffix("분"))
     }
 
@@ -125,5 +124,56 @@ final class StatisticsManagerTests: XCTestCase {
             Double(sut.todayRemapCount) * StatisticsManager.secondsPerRemap,
             accuracy: 0.001
         )
+    }
+
+    // MARK: - timeSavedSeconds is computed from remapCount
+
+    func test_timeSaved_isComputedFromCount() {
+        sut.recordRemap()
+        sut.recordRemap()
+        sut.recordRemap()
+        XCTAssertEqual(sut.timeSavedSeconds, Double(sut.remapCount) * StatisticsManager.secondsPerRemap, accuracy: 0.001)
+    }
+
+    // MARK: - Day boundary reset
+
+    func test_todayCount_resetsOnNewDay() {
+        var currentDate = Date()
+        let manager = StatisticsManager(defaults: testDefaults) { currentDate }
+
+        manager.recordRemap()
+        manager.recordRemap()
+        XCTAssertEqual(manager.todayRemapCount, 2)
+
+        // Advance to tomorrow
+        currentDate = Calendar.current.date(byAdding: .day, value: 1, to: currentDate)!  // swiftlint:disable:this force_unwrapping
+        XCTAssertEqual(manager.todayRemapCount, 0, "Today count should reset on new day")
+    }
+
+    func test_todayCount_resetsOnNewDay_cumulativeUnchanged() {
+        var currentDate = Date()
+        let manager = StatisticsManager(defaults: testDefaults) { currentDate }
+
+        manager.recordRemap()
+        manager.recordRemap()
+
+        // Advance to tomorrow
+        currentDate = Calendar.current.date(byAdding: .day, value: 1, to: currentDate)!  // swiftlint:disable:this force_unwrapping
+        XCTAssertEqual(manager.remapCount, 2, "Cumulative count should not reset on new day")
+    }
+
+    func test_recordRemap_onNewDay_startsFresh() {
+        var currentDate = Date()
+        let manager = StatisticsManager(defaults: testDefaults) { currentDate }
+
+        manager.recordRemap()
+        manager.recordRemap()
+
+        // Advance to tomorrow and record
+        currentDate = Calendar.current.date(byAdding: .day, value: 1, to: currentDate)!  // swiftlint:disable:this force_unwrapping
+        manager.recordRemap()
+
+        XCTAssertEqual(manager.todayRemapCount, 1, "Today count should be 1 after reset + new record")
+        XCTAssertEqual(manager.remapCount, 3, "Cumulative count should include all days")
     }
 }
