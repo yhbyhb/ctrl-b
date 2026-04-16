@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "ctrl-b",
+    name: "CtrlB",
     platforms: [.macOS(.v13)],
     targets: [
         // 테스트 가능한 핵심 로직 (순수 함수, 통계)
@@ -12,9 +12,9 @@ let package = Package(
         ),
         // 메인 앱 실행 파일
         .executableTarget(
-            name: "ctrl-b",
+            name: "CtrlB",
             dependencies: ["CtrlBCore"],
-            path: "Sources/ctrl_b",
+            path: "Sources/CtrlB",
             linkerSettings: [
                 .linkedFramework("Cocoa"),
                 .linkedFramework("ServiceManagement")

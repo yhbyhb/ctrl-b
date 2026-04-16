@@ -29,7 +29,7 @@ make setup                # 개발 환경 초기 설정 (git hooks)
   - `keyCodeToLowerASCII`: macOS 물리 keyCode(Int64) → ASCII 소문자(UInt8) 딕셔너리
   - `StatisticsManager`: UserDefaults 기반 리매핑 횟수/절약시간 집계 (DI로 테스트 가능)
 
-- **CtrlB** (`Sources/ctrl_b/`) — 앱 실행 파일. Cocoa, CoreGraphics, Carbon, ServiceManagement 프레임워크 사용.
+- **CtrlB** (`Sources/CtrlB/`) — 앱 실행 파일. Cocoa, CoreGraphics, Carbon, ServiceManagement 프레임워크 사용.
   - `EventTapManager`: CGEventTap 콜백에서 한글 IME + Ctrl + 알파벳 keyCode 조건 시 원본 이벤트 폐기(return nil) + `CGEventSource(stateID: .hidSystemState)`로 합성 이벤트 생성/post. `eventSourceUserData` sentinel 값으로 무한루프 방지.
   - `InputSourceUtils`: `TISCopyCurrentKeyboardInputSource` 기반 한글 입력 소스 감지 (language 배열 + input source ID 2단계). 디버그용 `logCurrentInputSource()` 포함.
   - `StatusBarController`: NSMenuDelegate로 메뉴 열릴 때마다 통계 갱신 (Timer 불필요)
