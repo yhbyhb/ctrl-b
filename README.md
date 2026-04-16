@@ -14,6 +14,10 @@ CtrlB runs as a menu bar app and uses a CGEventTap to intercept keyboard events.
 2. Creates a clean synthetic CGEvent without IME metadata
 3. Posts the synthetic event, which the terminal processes correctly
 
+### Prefix Follow-Up
+
+For tmux users: when CtrlB remaps `Ctrl+b` (the tmux prefix key), it also remaps the next key press within 1.5 seconds. This allows commands like `Ctrl+b` → `c` (new window) to work seamlessly with an IME active.
+
 ## Install
 
 ```bash
@@ -24,6 +28,8 @@ make install
 
 After launching, grant **Accessibility permission** when prompted:
 System Settings > Privacy & Security > Accessibility > Allow CtrlB
+
+CtrlB detects when permission is granted and starts working automatically — no restart required.
 
 ## Usage
 
