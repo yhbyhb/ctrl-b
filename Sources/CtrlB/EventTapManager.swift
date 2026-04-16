@@ -6,7 +6,7 @@ import os
 private let log = Logger(subsystem: "com.yhbyhb.CtrlB", category: "EventTap")
 
 final class EventTapManager {
-    /// 합성 이벤트 식별용 sentinel ("CBHRMAP" in ASCII)
+    /// Sentinel value for identifying synthetic events ("CBHRMAP" in ASCII)
     private static let sentinel: Int64 = 0x4342_4852_4D4150
     private let targetModifiers: CGEventFlags = [.maskControl]
 
@@ -14,7 +14,7 @@ final class EventTapManager {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
-    private let prefixKeyCode: Int64 = 11  // Ctrl+b (향후 설정 가능)
+    private let prefixKeyCode: Int64 = 11  // Ctrl+b (configurable in the future)
     private var pendingFollowUp = false
     private var followUpTimer: DispatchWorkItem?
     private let followUpTimeout: TimeInterval = 1.5
@@ -84,7 +84,7 @@ final class EventTapManager {
         }
     }
 
-    /// prefix 키 리매핑 직후 다음 1키를 한글→영문으로 리매핑
+    /// Remaps the next key after a prefix key remap (IME → ASCII)
     private func handleFollowUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         pendingFollowUp = false
         followUpTimer?.cancel()
@@ -122,33 +122,33 @@ final class EventTapManager {
     }
 
     fileprivate func handleKeyEvent(_ event: CGEvent, type: CGEventType) -> Unmanaged<CGEvent>? {
-        // 합성 이벤트는 통과 (무한루프 방지)
+        // Pass through synthetic events (prevent infinite loop)
         if event.getIntegerValueField(.eventSourceUserData) == Self.sentinel {
             return Unmanaged.passRetained(event)
         }
 
-        // Follow-up 체크 (prefix 키 리매핑 직후 다음 1키)
+        // Follow-up check (next key after prefix remap)
         if pendingFollowUp && type == .keyDown {
             return handleFollowUp(event)
         }
 
-        // 대상 modifier 체크 (현재: Ctrl)
+        // Check target modifier (currently: Ctrl)
         guard !event.flags.isDisjoint(with: targetModifiers) else {
             return Unmanaged.passRetained(event)
         }
 
-        // 대상 keyCode 체크 (a-z 알파벳 키만)
+        // Check target keyCode (a-z alphabet keys only)
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
         guard keyCodeToLowerASCII[keyCode] != nil else {
             return Unmanaged.passRetained(event)
         }
 
-        // 한글 입력 소스 체크
+        // Check if IME input source is active
         guard isInputMethodActive() else {
             return Unmanaged.passRetained(event)
         }
 
-        // 원본 폐기 + 합성 이벤트 생성
+        // Discard original + create synthetic event
         guard let source = CGEventSource(stateID: .hidSystemState),
               let newEvent = CGEvent(keyboardEventSource: source,
                                      virtualKey: CGKeyCode(keyCode),
@@ -163,11 +163,11 @@ final class EventTapManager {
 
         newEvent.post(tap: .cghidEventTap)
 
-        // 통계는 keyDown에서만 기록
+        // Record statistics on keyDown only
         if type == .keyDown {
             statisticsManager.recordRemap()
 
-            // prefix 키(Ctrl+b) 리매핑 시 follow-up 활성화
+            // Arm follow-up when prefix key (Ctrl+b) is remapped
             if keyCode == prefixKeyCode {
                 pendingFollowUp = true
                 followUpTimer?.cancel()
@@ -180,7 +180,7 @@ final class EventTapManager {
             }
         }
 
-        return nil  // 원본 폐기
+        return nil  // discard original
     }
 
     private func showAccessibilityAlert() {
@@ -197,7 +197,7 @@ final class EventTapManager {
     }
 }
 
-// MARK: - C callback (CGEventTap 콜백은 전역 함수여야 함)
+// MARK: - C callback (CGEventTap callback must be a global function)
 
 private func tapCallback(
     proxy: CGEventTapProxy,

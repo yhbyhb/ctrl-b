@@ -4,9 +4,9 @@ import os
 
 private let log = Logger(subsystem: "com.yhbyhb.CtrlB", category: "InputSource")
 
-/// 현재 활성 키보드 입력 소스가 IME(Input Method)인지 판별한다.
-/// kTISTypeKeyboardInputMode이면 IME → 리매핑 필요
-/// kTISTypeKeyboardLayout이면 단순 키맵 (ABC, AZERTY 등) → 리매핑 불필요
+/// Determines if the currently active keyboard input source is an IME.
+/// kTISTypeKeyboardInputMode means IME → remapping needed
+/// kTISTypeKeyboardLayout means simple keymap (ABC, AZERTY, etc.) → no remapping needed
 func isInputMethodActive() -> Bool {
     guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
           let typePtr = TISGetInputSourceProperty(source, kTISPropertyInputSourceType) else {
@@ -16,8 +16,8 @@ func isInputMethodActive() -> Bool {
     return isInputMethod(sourceType)
 }
 
-/// 디버그용: 현재 입력 소스 정보를 로그로 출력한다.
-/// isKoreanInputSourceActive()가 false를 반환할 때 호출하여 누락 입력기를 조기에 발견한다.
+/// Debug: logs current input source information.
+/// Call when isInputMethodActive() returns false to detect missing input methods early.
 func logCurrentInputSource() {
     guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else {
         log.warning("Unable to get current input source")

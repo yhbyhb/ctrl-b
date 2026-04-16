@@ -1,13 +1,13 @@
 import Foundation
 
-/// 주어진 UniChar가 한글 유니코드 범위에 속하는지 판별
+/// Determines if the given UniChar falls within Hangul Unicode ranges
 public func isHangul(_ char: UniChar) -> Bool {
     (0x1100...0x11FF).contains(char) ||  // Hangul Jamo
     (0x3130...0x318F).contains(char) ||  // Hangul Compatibility Jamo (ㅠ = U+3160)
     (0xAC00...0xD7A3).contains(char)     // Hangul Syllables
 }
 
-/// macOS 물리 keyCode → ASCII 소문자 매핑 (a–z 전체)
+/// macOS physical keyCode → lowercase ASCII mapping (a–z)
 public let keyCodeToLowerASCII: [Int64: UInt8] = [
      0: 97,   // a
      1: 115,  // s

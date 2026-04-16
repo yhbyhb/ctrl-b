@@ -10,7 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var permissionPollingTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Dock 아이콘 숨김 (메뉴바 전용 앱)
+        // Hide Dock icon (menu bar only app)
         NSApp.setActivationPolicy(.accessory)
 
         let stats = StatisticsManager()
@@ -18,7 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController = StatusBarController(eventTap: eventTap, stats: stats)
         eventTapManager = eventTap
 
-        // Accessibility 권한 확인 (없으면 시스템 다이얼로그 자동 표시)
+        // Check Accessibility permission (shows system dialog if not granted)
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
         let trusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
 
@@ -29,13 +29,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Accessibility 권한 대기
+    // MARK: - Accessibility Permission Monitoring
 
-    /// DistributedNotification(주) + 폴링(보조)으로 권한 부여를 감지하여 event tap 시작
+    /// Monitors for permission grant via DistributedNotification (primary) + polling (fallback)
     private func waitForAccessibilityPermission() {
-        log.info("Accessibility 권한 대기 시작")
+        log.info("Waiting for Accessibility permission")
 
-        // 1차: com.apple.accessibility.api 알림 감시 (Loop, Hammerspoon 등이 사용하는 비공식 알림)
+        // Primary: observe com.apple.accessibility.api notification (unofficial, used by Loop, Hammerspoon, etc.)
         DistributedNotificationCenter.default().addObserver(
             self,
             selector: #selector(handleAccessibilityChange),
@@ -43,15 +43,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
-        // 2차: 폴링 백업 (알림 누락 대비, 3초 간격)
+        // Fallback: polling every 3 seconds in case notification is missed
         permissionPollingTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
             self?.tryStartEventTap()
         }
     }
 
     @objc private func handleAccessibilityChange() {
-        log.debug("com.apple.accessibility.api 알림 수신")
-        // 알림이 AXIsProcessTrusted() 업데이트보다 약간 먼저 도착 — 200ms 대기
+        log.debug("Received com.apple.accessibility.api notification")
+        // Notification arrives slightly before AXIsProcessTrusted() updates — wait 200ms
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             self?.tryStartEventTap()
         }
@@ -60,7 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func tryStartEventTap() {
         guard AXIsProcessTrusted() else { return }
 
-        log.info("Accessibility 권한 확인됨 — event tap 시작")
+        log.info("Accessibility permission granted — starting event tap")
         stopPermissionMonitoring()
         eventTapManager?.start()
     }

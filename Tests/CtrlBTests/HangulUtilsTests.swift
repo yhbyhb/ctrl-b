@@ -24,7 +24,7 @@ final class HangulUtilsTests: XCTestCase {
     // MARK: - Hangul Compatibility Jamo (0x3130–0x318F)
 
     func test_hangulCompatJamo_yu() {
-        XCTAssertTrue(isHangul(0x3160))  // ㅠ — 핵심 타겟
+        XCTAssertTrue(isHangul(0x3160))  // ㅠ — primary target
     }
 
     func test_hangulCompatJamo_start() {
@@ -61,7 +61,7 @@ final class HangulUtilsTests: XCTestCase {
         XCTAssertFalse(isHangul(0xD7A4))
     }
 
-    // MARK: - 비한글 문자
+    // MARK: - Non-Hangul characters
 
     func test_ascii_a() {
         XCTAssertFalse(isHangul(UniChar(("a" as Unicode.Scalar).value)))

@@ -4,47 +4,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This App Does
 
-macOS IME(한글, 중국어, 일본어 등) 활성 상태에서 Ctrl+알파벳 단축키(tmux prefix 등)가 터미널에서 동작하지 않는 문제를 해결하는 메뉴바 상주 앱. CGEventTap으로 키 이벤트를 가로채, 원본 이벤트를 폐기하고 IME 메타데이터가 없는 합성 이벤트를 생성하여 주입한다.
+A menu-bar-resident macOS app that fixes the issue where Ctrl+alphabet shortcuts (e.g., tmux prefix) fail to work in terminals when a CJK IME (Korean, Chinese, Japanese, etc.) is active. It intercepts key events via CGEventTap, discards the original event, and injects a newly synthesized event that is free of IME metadata.
 
 ## Build & Test Commands
 
 ```bash
-swift build -c release    # 릴리스 빌드
-swift test                # 전체 테스트 실행
-swift test --filter StatisticsManagerTests           # 특정 테스트 클래스 실행
-swift test --filter StatisticsManagerTests/test_record_incrementsCount  # 단일 테스트
-make app                  # .app 번들 생성 (.build/release → CtrlB.app)
-make install              # /Applications에 설치
-make lint                 # SwiftLint 검사 (--strict)
-make lint-fix             # SwiftLint 자동 수정
-make setup                # 개발 환경 초기 설정 (git hooks)
+swift build -c release    # Release build
+swift test                # Run all tests
+swift test --filter StatisticsManagerTests           # Run a specific test class
+swift test --filter StatisticsManagerTests/test_record_incrementsCount  # Run a single test
+make app                  # Create .app bundle (.build/release -> CtrlB.app)
+make install              # Install to /Applications
+make lint                 # Run SwiftLint (--strict)
+make lint-fix             # Auto-fix SwiftLint violations
+make setup                # Initial dev environment setup (git hooks)
 ```
 
 ## Architecture
 
-두 개의 SPM 타겟으로 분리:
+Split into two SPM targets:
 
-- **CtrlBCore** (`Sources/CtrlBCore/`) — 테스트 가능한 순수 로직. Cocoa/CoreGraphics 의존 없음.
-  - `isHangul()`: UniChar → 한글 여부 (Jamo, Compatibility Jamo, Syllables 3개 범위)
-  - `keyCodeToLowerASCII`: macOS 물리 keyCode(Int64) → ASCII 소문자(UInt8) 딕셔너리
-  - `StatisticsManager`: UserDefaults 기반 리매핑 횟수/절약시간 집계 (DI로 테스트 가능)
+- **CtrlBCore** (`Sources/CtrlBCore/`) — Pure, testable logic with no Cocoa/CoreGraphics dependencies.
+  - `isHangul()`: Determines whether a UniChar is Korean (covers Jamo, Compatibility Jamo, and Syllables ranges)
+  - `keyCodeToLowerASCII`: Dictionary mapping macOS physical keyCode (Int64) to lowercase ASCII (UInt8)
+  - `StatisticsManager`: Tracks remap count and estimated time saved using UserDefaults (supports DI for testing)
 
-- **CtrlB** (`Sources/CtrlB/`) — 앱 실행 파일. Cocoa, CoreGraphics, Carbon, ServiceManagement 프레임워크 사용.
-  - `AppDelegate`: 앱 초기화, Accessibility 권한 감지 (DistributedNotificationCenter `com.apple.accessibility.api` + 3초 폴링 백업). 권한 부여 시 앱 재시작 없이 자동으로 event tap 시작.
-  - `EventTapManager`: CGEventTap 콜백에서 IME + Ctrl + 알파벳 keyCode 조건 시 원본 이벤트 폐기(return nil) + `CGEventSource(stateID: .hidSystemState)`로 합성 이벤트 생성/post. `eventSourceUserData` sentinel 값으로 무한루프 방지. prefix 키(Ctrl+b) 리매핑 후 1.5초 내 follow-up 키도 리매핑.
-  - `InputSourceUtils`: `TISCopyCurrentKeyboardInputSource` 기반 IME 입력 소스 감지 (`kTISTypeKeyboardInputMode` 판별). 디버그용 `logCurrentInputSource()` 포함.
-  - `StatusBarController`: NSMenuDelegate로 메뉴 열릴 때마다 통계 갱신 (Timer 불필요)
-  - `LaunchAtLoginManager`: SMAppService (macOS 13+) 기반
+- **CtrlB** (`Sources/CtrlB/`) — App executable. Uses Cocoa, CoreGraphics, Carbon, and ServiceManagement frameworks.
+  - `AppDelegate`: App initialization and Accessibility permission detection (via DistributedNotificationCenter `com.apple.accessibility.api` + 3-second polling fallback). Automatically starts the event tap when permission is granted, without requiring an app restart.
+  - `EventTapManager`: In the CGEventTap callback, when IME + Ctrl + alphabet keyCode conditions are met, discards the original event (return nil) and creates/posts a synthetic event via `CGEventSource(stateID: .hidSystemState)`. Uses an `eventSourceUserData` sentinel value to prevent infinite loops. After remapping a prefix key (Ctrl+b), also remaps follow-up keys pressed within 1.5 seconds.
+  - `InputSourceUtils`: Detects IME input sources based on `TISCopyCurrentKeyboardInputSource` (`kTISTypeKeyboardInputMode` check). Includes `logCurrentInputSource()` for debugging.
+  - `StatusBarController`: Uses NSMenuDelegate to refresh statistics each time the menu opens (no Timer needed)
+  - `LaunchAtLoginManager`: Based on SMAppService (macOS 13+)
 
 ## Key Design Decisions
 
-- **이벤트 consume + recreate**: CGEvent 콜백에서 원본 이벤트를 폐기(return nil)하고, `CGEventSource(stateID: .hidSystemState)`로 IME 메타데이터가 없는 합성 이벤트를 생성하여 `.cghidEventTap`에 post. 유니코드 문자열 수정(in-place) 방식은 CGEvent 레벨에서 이미 정상(U+0002)이라 효과 없음 — 문제는 `interpretKeyEvents:` 레이어에서 한글 IME가 이벤트를 소비하는 것.
-- **sentinel 기반 무한루프 방지**: 합성 이벤트에 `eventSourceUserData` 필드(0x4342_4852_4D4150)를 설정하여 자체 이벤트를 재처리하지 않음.
-- **대상 범위 제한**: `keyCodeToLowerASCII`에 등록된 a-z 26개 keyCode만 리매핑. Ctrl+Space, Ctrl+화살표 등은 통과.
-- **Core 분리**: CGEvent 등 시스템 API에 의존하는 코드는 테스트 불가능하므로, 순수 로직(한글 판별, keyCode 매핑, 통계)만 Core로 분리해 유닛 테스트 커버.
-- **StatisticsManager DI**: `UserDefaults`를 생성자 주입받아 테스트에서 격리된 suite 사용.
-- **LSUIElement=true**: Dock 아이콘 숨김, 메뉴바 전용 앱.
-- **os.Logger**: `com.yhbyhb.CtrlB` 서브시스템으로 구조화된 로깅. Console.app에서 카테고리별 필터링 가능.
+- **Event consume + recreate**: The CGEvent callback discards the original event (return nil) and posts a new synthetic event via `CGEventSource(stateID: .hidSystemState)` to `.cghidEventTap`, free of IME metadata. In-place Unicode string modification does not work because the CGEvent already contains the correct value (U+0002) — the actual problem is that the Korean IME consumes the event at the `interpretKeyEvents:` layer.
+- **Sentinel-based infinite loop prevention**: Synthetic events are tagged with an `eventSourceUserData` field (0x4342_4852_4D4150) so the tap does not reprocess its own events.
+- **Scoped remapping**: Only the 26 a-z keyCodes registered in `keyCodeToLowerASCII` are remapped. Ctrl+Space, Ctrl+arrow keys, etc. pass through unchanged.
+- **Core separation**: Code that depends on system APIs like CGEvent cannot be unit-tested, so only pure logic (Hangul detection, keyCode mapping, statistics) is extracted into Core for unit test coverage.
+- **StatisticsManager DI**: `UserDefaults` is injected via the initializer, allowing tests to use an isolated suite.
+- **LSUIElement=true**: Hides the Dock icon; the app runs as a menu-bar-only app.
+- **os.Logger**: Structured logging under the `com.yhbyhb.CtrlB` subsystem. Supports per-category filtering in Console.app.
 
 ## Conventions
 
