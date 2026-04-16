@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This App Does
 
-macOS 한글 IME 활성 상태에서 Ctrl+알파벳 단축키(tmux prefix 등)가 터미널에서 동작하지 않는 문제를 해결하는 메뉴바 상주 앱. CGEventTap으로 키 이벤트를 가로채, 원본 이벤트를 폐기하고 IME 메타데이터가 없는 합성 이벤트를 생성하여 주입한다.
+macOS IME(한글, 중국어, 일본어 등) 활성 상태에서 Ctrl+알파벳 단축키(tmux prefix 등)가 터미널에서 동작하지 않는 문제를 해결하는 메뉴바 상주 앱. CGEventTap으로 키 이벤트를 가로채, 원본 이벤트를 폐기하고 IME 메타데이터가 없는 합성 이벤트를 생성하여 주입한다.
 
 ## Build & Test Commands
 
@@ -30,8 +30,9 @@ make setup                # 개발 환경 초기 설정 (git hooks)
   - `StatisticsManager`: UserDefaults 기반 리매핑 횟수/절약시간 집계 (DI로 테스트 가능)
 
 - **CtrlB** (`Sources/CtrlB/`) — 앱 실행 파일. Cocoa, CoreGraphics, Carbon, ServiceManagement 프레임워크 사용.
-  - `EventTapManager`: CGEventTap 콜백에서 한글 IME + Ctrl + 알파벳 keyCode 조건 시 원본 이벤트 폐기(return nil) + `CGEventSource(stateID: .hidSystemState)`로 합성 이벤트 생성/post. `eventSourceUserData` sentinel 값으로 무한루프 방지.
-  - `InputSourceUtils`: `TISCopyCurrentKeyboardInputSource` 기반 한글 입력 소스 감지 (language 배열 + input source ID 2단계). 디버그용 `logCurrentInputSource()` 포함.
+  - `AppDelegate`: 앱 초기화, Accessibility 권한 감지 (DistributedNotificationCenter `com.apple.accessibility.api` + 3초 폴링 백업). 권한 부여 시 앱 재시작 없이 자동으로 event tap 시작.
+  - `EventTapManager`: CGEventTap 콜백에서 IME + Ctrl + 알파벳 keyCode 조건 시 원본 이벤트 폐기(return nil) + `CGEventSource(stateID: .hidSystemState)`로 합성 이벤트 생성/post. `eventSourceUserData` sentinel 값으로 무한루프 방지. prefix 키(Ctrl+b) 리매핑 후 1.5초 내 follow-up 키도 리매핑.
+  - `InputSourceUtils`: `TISCopyCurrentKeyboardInputSource` 기반 IME 입력 소스 감지 (`kTISTypeKeyboardInputMode` 판별). 디버그용 `logCurrentInputSource()` 포함.
   - `StatusBarController`: NSMenuDelegate로 메뉴 열릴 때마다 통계 갱신 (Timer 불필요)
   - `LaunchAtLoginManager`: SMAppService (macOS 13+) 기반
 
@@ -45,6 +46,9 @@ make setup                # 개발 환경 초기 설정 (git hooks)
 - **LSUIElement=true**: Dock 아이콘 숨김, 메뉴바 전용 앱.
 - **os.Logger**: `com.yhbyhb.CtrlB` 서브시스템으로 구조화된 로깅. Console.app에서 카테고리별 필터링 가능.
 
-## Language
+## Conventions
 
-UI 문자열과 코드 주석은 한국어로 작성.
+- UI strings, code comments, and documentation are written in English.
+- Korean is supported as a localization target (planned).
+- Commit messages in English (conventional commits).
+- Update README.md and CLAUDE.md in the same PR when changing features.
