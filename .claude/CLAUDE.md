@@ -13,7 +13,7 @@ swift build -c release    # Release build
 swift test                # Run all tests
 swift test --filter StatisticsManagerTests           # Run a specific test class
 swift test --filter StatisticsManagerTests/test_record_incrementsCount  # Run a single test
-make app                  # Create .app bundle (.build/release -> CtrlB.app)
+make app                  # Create .app bundle (.build/release -> ctrl-b.app)
 make install              # Install to /Applications
 make lint                 # Run SwiftLint (--strict)
 make lint-fix             # Auto-fix SwiftLint violations
@@ -44,7 +44,7 @@ Split into two SPM targets:
 - **Core separation**: Code that depends on system APIs like CGEvent cannot be unit-tested, so only pure logic (Hangul detection, keyCode mapping, statistics) is extracted into Core for unit test coverage.
 - **StatisticsManager DI**: `UserDefaults` is injected via the initializer, allowing tests to use an isolated suite.
 - **LSUIElement=true**: Hides the Dock icon; the app runs as a menu-bar-only app.
-- **os.Logger**: Structured logging under the `com.yhbyhb.CtrlB` subsystem. Supports per-category filtering in Console.app.
+- **os.Logger**: Structured logging under the `com.yhbyhb.ctrl-b` subsystem. Supports per-category filtering in Console.app.
 
 ## Conventions
 

@@ -11,7 +11,7 @@
 
 /* Accessibility Alert */
 "alert.accessibility.title" = "손쉬운 사용 권한 필요";
-"alert.accessibility.message" = "CtrlB가 키보드 이벤트를 처리하려면 손쉬운 사용 권한이 필요합니다.\n\n시스템 설정 > 개인 정보 보호 및 보안 > 손쉬운 사용에서 허용해 주세요.";
+"alert.accessibility.message" = "ctrl-b가 키보드 이벤트를 처리하려면 손쉬운 사용 권한이 필요합니다.\n\n시스템 설정 > 개인 정보 보호 및 보안 > 손쉬운 사용에서 허용해 주세요.";
 "alert.accessibility.open" = "시스템 설정 열기";
 "alert.accessibility.later" = "나중에";
 

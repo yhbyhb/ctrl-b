@@ -11,7 +11,7 @@
 
 /* Accessibility Alert */
 "alert.accessibility.title" = "需要辅助功能权限";
-"alert.accessibility.message" = "CtrlB需要辅助功能权限来拦截键盘事件。\n\n请前往系统设置 > 隐私与安全性 > 辅助功能中允许CtrlB。";
+"alert.accessibility.message" = "ctrl-b需要辅助功能权限来拦截键盘事件。\n\n请前往系统设置 > 隐私与安全性 > 辅助功能中允许ctrl-b。";
 "alert.accessibility.open" = "打开系统设置";
 "alert.accessibility.later" = "稍后";
 

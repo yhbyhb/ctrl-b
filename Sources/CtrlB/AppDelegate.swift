@@ -2,7 +2,7 @@ import Cocoa
 import CtrlBCore
 import os
 
-private let log = Logger(subsystem: "com.yhbyhb.CtrlB", category: "AppDelegate")
+private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "AppDelegate")
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController?

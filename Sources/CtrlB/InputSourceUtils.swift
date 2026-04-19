@@ -2,7 +2,7 @@ import Carbon
 import CtrlBCore
 import os
 
-private let log = Logger(subsystem: "com.yhbyhb.CtrlB", category: "InputSource")
+private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "InputSource")
 
 /// Determines if the currently active keyboard input source is an IME.
 /// kTISTypeKeyboardInputMode means IME → remapping needed

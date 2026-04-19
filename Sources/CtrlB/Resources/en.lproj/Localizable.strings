@@ -11,7 +11,7 @@
 
 /* Accessibility Alert */
 "alert.accessibility.title" = "Accessibility Permission Required";
-"alert.accessibility.message" = "CtrlB needs Accessibility permission to intercept keyboard events.\n\nGo to System Settings > Privacy & Security > Accessibility to allow CtrlB.";
+"alert.accessibility.message" = "ctrl-b needs Accessibility permission to intercept keyboard events.\n\nGo to System Settings > Privacy & Security > Accessibility to allow ctrl-b.";
 "alert.accessibility.open" = "Open System Settings";
 "alert.accessibility.later" = "Later";
 

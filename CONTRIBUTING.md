@@ -1,6 +1,6 @@
-# Contributing to CtrlB
+# Contributing to ctrl-b
 
-Thank you for your interest in contributing to CtrlB!
+Thank you for your interest in contributing to ctrl-b!
 
 ## Getting Started
 
@@ -13,8 +13,8 @@ Thank you for your interest in contributing to CtrlB!
 ### Setup
 
 ```bash
-git clone https://github.com/yhbyhb/CtrlB.git
-cd CtrlB
+git clone https://github.com/yhbyhb/ctrl-b.git
+cd ctrl-b
 make setup    # configure git hooks
 ```
 
@@ -35,7 +35,7 @@ make install              # install to /Applications
 ```
 
 After launching, grant **Accessibility permission** in:
-System Settings > Privacy & Security > Accessibility > Allow CtrlB
+System Settings > Privacy & Security > Accessibility > Allow ctrl-b
 
 ## Project Structure
 

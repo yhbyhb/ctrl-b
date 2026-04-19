@@ -1,46 +1,47 @@
-APP_NAME   = CtrlB
+APP_NAME   = ctrl-b
 BUNDLE     = $(APP_NAME).app
 BUILD_DIR  = .build/release
-BINARY     = $(BUILD_DIR)/$(APP_NAME)
+BINARY     = $(BUILD_DIR)/CtrlB
 
 .PHONY: build app install test clean lint lint-fix setup
 
-## swift build (개발용)
+## swift build
 build:
 	swift build -c release
 
-## .app 번들 생성
+## Create .app bundle
 app: build
 	mkdir -p $(BUNDLE)/Contents/MacOS
 	mkdir -p $(BUNDLE)/Contents/Resources
-	cp $(BINARY) $(BUNDLE)/Contents/MacOS/$(APP_NAME)
+	cp $(BINARY) $(BUNDLE)/Contents/MacOS/CtrlB
+	strip -S $(BUNDLE)/Contents/MacOS/CtrlB
 	cp Resources/Info.plist $(BUNDLE)/Contents/Info.plist
 	cp Resources/AppIcon.icns $(BUNDLE)/Contents/Resources/AppIcon.icns
 	cp -r $(BUILD_DIR)/CtrlB_CtrlB.bundle $(BUNDLE)/Contents/Resources/ 2>/dev/null || true
-	@echo "✓ $(BUNDLE) 생성 완료"
+	@echo "✓ $(BUNDLE) created"
 
-## /Applications 에 설치
+## Install to /Applications
 install: app
 	cp -r $(BUNDLE) /Applications/
-	@echo "✓ /Applications/$(BUNDLE) 설치 완료"
+	@echo "✓ Installed to /Applications/$(BUNDLE)"
 
-## 유닛 테스트 실행
+## Run unit tests
 test:
 	swift test
 
-## 빌드 산출물 정리
+## Clean build artifacts
 clean:
 	rm -rf .build $(BUNDLE)
 
-## SwiftLint 검사
+## Run SwiftLint
 lint:
 	swiftlint lint --strict
 
-## SwiftLint 자동 수정
+## Auto-fix SwiftLint violations
 lint-fix:
 	swiftlint lint --fix
 
-## 개발 환경 초기 설정 (git hooks)
+## Initial dev environment setup (git hooks)
 setup:
 	git config core.hooksPath .githooks
 	chmod +x .githooks/pre-commit

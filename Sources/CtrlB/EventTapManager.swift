@@ -3,7 +3,7 @@ import CoreGraphics
 import CtrlBCore
 import os
 
-private let log = Logger(subsystem: "com.yhbyhb.CtrlB", category: "EventTap")
+private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "EventTap")
 
 final class EventTapManager {
     /// Sentinel value for identifying synthetic events ("CBHRMAP" in ASCII)
