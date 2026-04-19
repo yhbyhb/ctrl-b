@@ -17,7 +17,7 @@ app: build
 	strip -S $(BUNDLE)/Contents/MacOS/CtrlB
 	cp Resources/Info.plist $(BUNDLE)/Contents/Info.plist
 	cp Resources/AppIcon.icns $(BUNDLE)/Contents/Resources/AppIcon.icns
-	cp -r $(BUILD_DIR)/CtrlB_CtrlB.bundle $(BUNDLE)/Contents/Resources/ 2>/dev/null || true
+	cp -r $(BUILD_DIR)/CtrlB_CtrlB.bundle $(BUNDLE)/ 2>/dev/null || true
 	@echo "✓ $(BUNDLE) created"
 
 ## Install to /Applications
