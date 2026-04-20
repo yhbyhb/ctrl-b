@@ -5,7 +5,7 @@ Status: Draft
 
 ## Context
 
-CtrlB is a menu-bar macOS utility that works around a CJK IME bug affecting
+ctrl-b is a menu-bar macOS utility that works around a CJK IME bug affecting
 Ctrl+letter shortcuts in terminals. The project has been developed privately
 with the intent to eventually distribute it publicly. Before any distribution
 work begins, this document defines:
@@ -16,6 +16,10 @@ work begins, this document defines:
 - The staged rollout from current private state to public launch, and
   potentially to a paid offering
 - What signals would justify moving between stages
+
+This spec supersedes the earlier `docs/distribution-plan.md` sketch; the
+useful content from that file (Homebrew Formula policy quote, channel
+matrix, Homebrew-cask official-tap threshold) is integrated below.
 
 ## Decision Summary
 
@@ -34,13 +38,13 @@ work begins, this document defines:
 5. **$2.99 flat price if and when a paid tier is added.** Sold via Gumroad or
    Paddle; platform choice deferred to the time the paid tier is activated.
 6. **In-app donations:** GitHub Sponsors and Ko-fi, surfaced as a "Support
-   CtrlB" submenu in the status bar menu.
+   ctrl-b" submenu in the status bar menu.
 
 ## Why the Mac App Store Is Not Viable
 
 ### Technical block: App Sandbox and `.defaultTap`
 
-CtrlB's event tap is created with `options: .defaultTap`, which allows the
+ctrl-b's event tap is created with `options: .defaultTap`, which allows the
 callback to drop the original event (by returning `nil`) and inject a
 synthesized replacement. This capability requires Accessibility permission,
 which the App Sandbox blocks.
@@ -71,7 +75,7 @@ transcribed text, was rejected with:
 > capabilities interact with their devices and app. Apps may not use
 > features designed to increase accessibility for other purposes."
 
-CtrlB uses Accessibility for the same kind of non-accessibility purpose (IME
+ctrl-b uses Accessibility for the same kind of non-accessibility purpose (IME
 workaround), so the same rejection rationale applies.
 
 ### Re-evaluation conditions
@@ -87,6 +91,38 @@ Move MAS out of exclusion only if *both* blocks are lifted:
 
 Until both conditions hold, perform only a lightweight annual check. No
 active preparation work (entitlements, review notes, MAS assets) is done.
+
+## Distribution Channels
+
+### Homebrew Cask, not Homebrew Formula
+
+Homebrew Formula is intended for CLI tools. Homebrew's own Formula Cookbook
+forbids shipping `.app` bundles through Formulae:
+
+> "Don't make your formula build an `.app` (native macOS Application); we
+> don't want those things in Homebrew."
+
+Every macOS menu-bar / GUI app in the official Homebrew taps uses Cask
+(pre-built, code-signed binary). A personal tap could technically bend this
+rule with a Formula that builds from source, but the resulting UX and
+maintainability are inferior to a signed Cask, so ctrl-b follows the Cask
+path once signing is in place.
+
+### Channel matrix
+
+| Channel | Fixed cost | Gatekeeper | Stage it becomes available |
+|---|---|---|---|
+| GitHub Releases (notarized `.dmg`) | $99/yr | Passes | Stage 1 |
+| Personal tap Cask (`yhbyhb/ctrl-b`) | $99/yr | Passes | Stage 1 |
+| homebrew-cask official tap | $99/yr + ~75 stars | Passes | Optional Stage 1 follow-up |
+| GitHub Sponsors | $0 | n/a | Stage 1 |
+| Ko-fi | $0 | n/a | Stage 1 |
+| Gumroad / Paddle | Platform fees | n/a | Stage 2 only |
+
+homebrew-cask's official tap has an unwritten expectation of reasonably
+established projects (community rule of thumb is around 75 GitHub stars).
+The personal tap works from Stage 1 without this bar; submitting to the
+official tap is an optional later move, not a launch-day requirement.
 
 ## Distribution Strategy
 
@@ -128,14 +164,14 @@ before public launch):
 - Build and test the notarization pipeline (`xcrun notarytool`) end-to-end
   against the private build.
 - Integrate Sparkle with a placeholder feed URL.
-- Create the Homebrew tap repo (`homebrew-ctrlb`), kept private until
+- Create the Homebrew tap repo (`homebrew-ctrl-b`), kept private until
   launch.
 - Prepare GitHub Sponsors tier configuration (without activating).
 - Create a Ko-fi account.
 
 ### Stage 1: Public launch (repo visibility flip, $99 already spent)
 
-Single trigger event: the CtrlB repo visibility changes from private to
+Single trigger event: the ctrl-b repo visibility changes from private to
 public. Everything else is prepared in advance so that the moment of
 exposure gives a complete experience.
 
@@ -144,9 +180,9 @@ Coordinated at the flip:
 - Homebrew tap repo made public.
 - GitHub Sponsors page activated.
 - Ko-fi link live.
-- README shows normal install instructions (`brew install yhbyhb/ctrlb/ctrlb`
+- README shows normal install instructions (`brew install --cask yhbyhb/ctrl-b/ctrl-b`
   and direct download), with no Gatekeeper workarounds needed.
-- Status-bar "Support CtrlB" submenu points to working URLs.
+- Status-bar "Support ctrl-b" submenu points to working URLs.
 
 Optional launch communication (planned in `docs/ROADMAP.md`, not this spec):
 Product Hunt, Hacker News, relevant CJK developer communities, a short
@@ -181,7 +217,7 @@ sustain a paid tier.
 When triggered:
 - Create a Gumroad or Paddle listing at $2.99 (platform chosen at the time
   based on current fee structure and Merchant-of-Record treatment).
-- Add a "Buy on Gumroad" (or equivalent) item to the "Support CtrlB"
+- Add a "Buy on Gumroad" (or equivalent) item to the "Support ctrl-b"
   submenu.
 - The purchase is a trust-based contribution, not a license gate: the app
   remains fully functional when installed from GitHub or Homebrew. This
@@ -206,7 +242,7 @@ Layout:
 …
 27 remaps · ~5.4 min saved
 ──────
-Support CtrlB ▸    GitHub Sponsors
+Support ctrl-b ▸   GitHub Sponsors
                    Ko-fi
                    (Buy on Gumroad — added in Stage 2)
 ──────
@@ -249,6 +285,14 @@ This spec does *not* decide:
 - Handling of third-party contributions (CLA, DCO, etc.). Deferred until
   contributions start to arrive.
 
+## Note on naming
+
+The user-facing app name and bundle are `ctrl-b` (see commit 420c5dc).
+Swift Package Manager target directories and module names remain `CtrlB`
+because Swift module names cannot contain hyphens. When this spec refers
+to the product in prose, "ctrl-b" is used; when it refers to source
+directories or Swift types, the module name appears unchanged.
+
 ## References
 
 - Apple Developer Forums thread 789896 — "Accessibility Permission In
@@ -260,6 +304,8 @@ This spec does *not* decide:
   <https://whispernotes.app/blog/why-whisper-notes-left-mac-app-store>
 - Homebrew — "Acceptable Casks"
   <https://docs.brew.sh/Acceptable-Casks>
+- Homebrew — "Formula Cookbook"
+  <https://docs.brew.sh/Formula-Cookbook>
 - Workbrew — "What Homebrew 5.0.0 means for your Mac fleet"
   <https://workbrew.com/blog/homebrew-5-0-0>
 - Maccy <https://github.com/p0deje/Maccy> — MIT + MAS $10, precedent for
