@@ -9,6 +9,11 @@
 "menu.login.disabled" = "ログイン時に起動";
 "menu.quit" = "終了";
 
+/* Support Menu */
+"menu.support" = "ctrl-b を支援";
+"menu.support.sponsors" = "GitHub Sponsors";
+"menu.support.kofi" = "Ko-fi";
+
 /* Accessibility Alert */
 "alert.accessibility.title" = "アクセシビリティの許可が必要です";
 "alert.accessibility.message" = "ctrl-bがキーボードイベントを処理するには、アクセシビリティの許可が必要です。\n\nシステム設定 > プライバシーとセキュリティ > アクセシビリティで許可してください。";
