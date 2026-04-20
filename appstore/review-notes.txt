@@ -1,0 +1,12 @@
+This app requires Accessibility permission to intercept keyboard events via CGEventTap.
+
+PURPOSE: macOS input methods (Korean, Chinese, Japanese, etc.) consume Ctrl+key events at the interpretKeyEvents: layer before terminal emulators can process them. This causes Ctrl+key shortcuts (e.g., Ctrl+B for tmux) to fail silently. CtrlB intercepts these events, discards the IME-tainted original, and posts a clean synthetic event that terminals process correctly.
+
+HOW TO TEST:
+1. Launch CtrlB — grant Accessibility permission when prompted
+2. Enable a non-ASCII input method (e.g., Korean 2-Set, Chinese Pinyin)
+3. Open Terminal.app
+4. Press Ctrl+B (or any Ctrl+letter) — the shortcut should work correctly
+5. Without CtrlB running, the same shortcut fails when an IME is active
+
+DATA HANDLING: CtrlB does not collect, transmit, or store any personal data. It has zero network access. The only persisted data is a local remap counter stored in UserDefaults, which the user can reset from the menu.

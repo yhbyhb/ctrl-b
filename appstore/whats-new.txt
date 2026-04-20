@@ -1,0 +1,4 @@
+- Supports all IME types (Korean, Chinese, Japanese, and more)
+- Automatically starts when accessibility permission is granted — no restart needed
+- Available in English, Korean, Japanese, and Chinese
+- Improved time-saved estimation

@@ -1,0 +1,1 @@
+korean,hangul,ime,ctrl,keyboard,shortcut,tmux,terminal,remap,chinese,japanese,input method

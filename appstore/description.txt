@@ -1,0 +1,26 @@
+CtrlB fixes Ctrl+key shortcuts that don't work when an input method (IME) is active on macOS.
+
+THE PROBLEM
+
+When using a non-ASCII input method like Korean, Chinese, or Japanese, Ctrl+key shortcuts such as Ctrl+B (tmux prefix), Ctrl+A, or Ctrl+C fail silently in terminal emulators. The IME intercepts the key event before the terminal can process it.
+
+HOW IT WORKS
+
+CtrlB runs quietly in your menu bar. It intercepts keyboard events and transparently remaps Ctrl+letter keys so they work correctly regardless of your active input method. No configuration needed — just install and forget.
+
+FEATURES
+
+- Automatic Ctrl+A-Z remapping when any IME is active
+- Prefix follow-up support for tmux (Ctrl+B then next key)
+- Works with Korean, Chinese, Japanese, and other input methods
+- Remap statistics (today and cumulative)
+- Launch at login
+- Lightweight menu bar app — no Dock icon, no windows
+- Available in English, Korean, Japanese, and Chinese
+
+PRIVACY
+
+CtrlB does not collect, store, or transmit any data. It has no network access and no analytics. All statistics are stored locally on your Mac and can be reset at any time.
+
+This app is free and open source. The App Store purchase supports continued development.
+https://github.com/yhbyhb/CtrlB
