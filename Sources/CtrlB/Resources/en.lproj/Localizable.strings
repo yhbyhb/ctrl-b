@@ -9,6 +9,11 @@
 "menu.login.disabled" = "Launch at Login";
 "menu.quit" = "Quit";
 
+/* Support Menu */
+"menu.support" = "Support ctrl-b";
+"menu.support.sponsors" = "GitHub Sponsors";
+"menu.support.kofi" = "Ko-fi";
+
 /* Accessibility Alert */
 "alert.accessibility.title" = "Accessibility Permission Required";
 "alert.accessibility.message" = "ctrl-b needs Accessibility permission to intercept keyboard events.\n\nGo to System Settings > Privacy & Security > Accessibility to allow ctrl-b.";
