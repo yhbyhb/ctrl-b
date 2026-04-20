@@ -56,6 +56,15 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         menu.addItem(action(localized("menu.reset"), #selector(resetStats)))
         menu.addItem(.separator())
 
+        // Support submenu
+        let supportItem = NSMenuItem(title: localized("menu.support"), action: nil, keyEquivalent: "")
+        let supportSubmenu = NSMenu()
+        supportSubmenu.addItem(action(localized("menu.support.sponsors"), #selector(openSponsors)))
+        supportSubmenu.addItem(action(localized("menu.support.kofi"), #selector(openKofi)))
+        supportItem.submenu = supportSubmenu
+        menu.addItem(supportItem)
+        menu.addItem(.separator())
+
         // Launch at login
         let loginTitle = LaunchAtLoginManager.isEnabled ? localized("menu.login.enabled") : localized("menu.login.disabled")
         menu.addItem(action(loginTitle, #selector(toggleLaunchAtLogin)))
@@ -78,6 +87,14 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func toggleLaunchAtLogin() {
         LaunchAtLoginManager.toggle()
+    }
+
+    @objc private func openSponsors() {
+        NSWorkspace.shared.open(SupportLinks.githubSponsors)
+    }
+
+    @objc private func openKofi() {
+        NSWorkspace.shared.open(SupportLinks.kofi)
     }
 
     // MARK: - Helpers
