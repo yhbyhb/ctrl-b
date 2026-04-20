@@ -11,6 +11,7 @@ build:
 
 ## Create .app bundle
 app: build
+	rm -rf $(BUNDLE)
 	mkdir -p $(BUNDLE)/Contents/MacOS
 	mkdir -p $(BUNDLE)/Contents/Resources
 	cp $(BINARY) $(BUNDLE)/Contents/MacOS/CtrlB
