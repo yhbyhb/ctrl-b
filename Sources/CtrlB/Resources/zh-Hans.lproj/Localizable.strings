@@ -9,6 +9,11 @@
 "menu.login.disabled" = "登录时启动";
 "menu.quit" = "退出";
 
+/* Support Menu */
+"menu.support" = "支持 ctrl-b";
+"menu.support.sponsors" = "GitHub Sponsors";
+"menu.support.kofi" = "Ko-fi";
+
 /* Accessibility Alert */
 "alert.accessibility.title" = "需要辅助功能权限";
 "alert.accessibility.message" = "ctrl-b需要辅助功能权限来拦截键盘事件。\n\n请前往系统设置 > 隐私与安全性 > 辅助功能中允许ctrl-b。";
