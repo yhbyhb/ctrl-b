@@ -5,83 +5,148 @@ import os
 
 private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "EventTap")
 
-final class EventTapManager {
+final class EventTapManager: EventTapControlling {
     /// Sentinel value for identifying synthetic events ("CBHRMAP" in ASCII)
     private static let sentinel: Int64 = 0x4342_4852_4D4150
     private let targetModifiers: CGEventFlags = [.maskControl]
 
     private let statisticsManager: StatisticsManager
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
+    private let permissionController: AccessibilityPermissionControlling
+    private let eventTapEngine: EventTapEngineControlling
 
     private let prefixKeyCode: Int64 = 11  // Ctrl+b (configurable in the future)
     private var pendingFollowUp = false
     private var followUpTimer: DispatchWorkItem?
     private let followUpTimeout: TimeInterval = 1.5
 
-    private(set) var isEnabled: Bool = true {
+    private(set) var state: EventTapState = .permissionRequired {
         didSet {
-            if let tap = eventTap {
-                CGEvent.tapEnable(tap: tap, enable: isEnabled)
-            }
+            guard oldValue != state else { return }
+            onStateChange?(state)
         }
     }
+    var onStateChange: ((EventTapState) -> Void)?
+    var isAwaitingFollowUp: Bool { pendingFollowUp }
 
-    init(statisticsManager: StatisticsManager) {
+    init(
+        statisticsManager: StatisticsManager,
+        permissionController: AccessibilityPermissionControlling = AccessibilityPermissionController(),
+        eventTapEngine: EventTapEngineControlling = EventTapEngine()
+    ) {
         self.statisticsManager = statisticsManager
+        self.permissionController = permissionController
+        self.eventTapEngine = eventTapEngine
     }
 
-    func start() {
-        let trusted = AXIsProcessTrusted()
-        log.info("Accessibility trusted: \(trusted ? "YES" : "NO")")
-
-        let eventMask: CGEventMask =
-            (1 << CGEventType.keyDown.rawValue) |
-            (1 << CGEventType.keyUp.rawValue) |
-            (1 << CGEventType.tapDisabledByTimeout.rawValue) |
-            (1 << CGEventType.tapDisabledByUserInput.rawValue)
-
-        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: eventMask,
-            callback: tapCallback,
-            userInfo: selfPtr
-        ) else {
-            log.error("CGEvent.tapCreate failed — no accessibility permission?")
-            showAccessibilityAlert()
-            return
-        }
-
-        log.info("CGEvent.tapCreate succeeded")
-        eventTap = tap
-        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
-        log.info("Event tap enabled and added to run loop")
+    func start(reason: EventTapStateChangeReason = .launch) {
+        _ = attemptToEnable(reason: reason)
     }
 
-    func stop() {
-        guard let tap = eventTap else { return }
-        CGEvent.tapEnable(tap: tap, enable: false)
-        if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
-        }
+    func pause() {
+        eventTapEngine.stop()
+        transition(to: .paused, reason: .userPaused)
+    }
+
+    func shutdown() {
+        eventTapEngine.stop()
+        pendingFollowUp = false
+        followUpTimer?.cancel()
+        followUpTimer = nil
     }
 
     func toggle() {
-        isEnabled.toggle()
+        switch state {
+        case .enabled:
+            eventTapEngine.setEnabled(false)
+            transition(to: .paused, reason: .userPaused)
+        case .paused:
+            _ = attemptToEnable(reason: .userResumed)
+        case .permissionRequired, .unavailable:
+            _ = checkAgain()
+        }
     }
+
+    @discardableResult
+    func checkAgain() -> EventTapState {
+        attemptToEnable(reason: .checkAgainRequested)
+    }
+
+    @discardableResult
+    func refreshPermissionState() -> EventTapState {
+        let trusted = permissionController.isTrusted()
+        log.info("Accessibility trusted refresh: \(trusted ? "YES" : "NO")")
+
+        guard trusted else {
+            if state == .enabled || state == .paused {
+                shutdown()
+            }
+            transition(to: .permissionRequired, reason: .permissionMissing)
+            return state
+        }
+
+        return state
+    }
+
+    @discardableResult
+    func syncPermissionState() -> EventTapState {
+        let refreshedState = refreshPermissionState()
+
+        switch refreshedState {
+        case .permissionRequired, .unavailable:
+            return checkAgain()
+        case .enabled, .paused:
+            return refreshedState
+        }
+    }
+
+    func openAccessibilitySettings() {
+        permissionController.openSettings()
+    }
+
+    #if DEBUG
+    func debugSetAwaitingFollowUpForTests(_ isAwaiting: Bool) {
+        pendingFollowUp = isAwaiting
+    }
+    #endif
 
     // MARK: - Private
 
-    fileprivate func handleTapDisabled() {
-        if let tap = eventTap, isEnabled {
-            CGEvent.tapEnable(tap: tap, enable: true)
+    func handleTapDisabled(type: CGEventType) {
+        guard state == .enabled else { return }
+
+        let reason: EventTapStateChangeReason = switch type {
+        case .tapDisabledByUserInput:
+            .tapDisabledByUserInput
+        default:
+            .tapDisabledByTimeout
         }
+        eventTapEngine.setEnabled(true)
+        transition(to: .enabled, reason: reason)
+    }
+
+    private func attemptToEnable(reason: EventTapStateChangeReason) -> EventTapState {
+        let trusted = permissionController.isTrusted()
+        log.info("Accessibility trusted: \(trusted ? "YES" : "NO")")
+
+        guard trusted else {
+            transition(to: .permissionRequired, reason: reason == .initialPromptShown ? .initialPromptShown : .permissionMissing)
+            return state
+        }
+
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+        guard eventTapEngine.start(userInfo: selfPtr) else {
+            transition(to: .unavailable, reason: .tapCreateFailed)
+            return state
+        }
+
+        eventTapEngine.setEnabled(true)
+        transition(to: .enabled, reason: reason == .checkAgainRequested ? .checkAgainRequested : .permissionGranted)
+        return state
+    }
+
+    private func transition(to newState: EventTapState, reason: EventTapStateChangeReason) {
+        log.info("state transition: \(String(describing: self.state)) -> \(String(describing: newState)) reason=\(reason.rawValue)")
+        state = newState
     }
 
     /// Remaps the next key after a prefix key remap (IME → ASCII)
@@ -183,23 +248,11 @@ final class EventTapManager {
         return nil  // discard original
     }
 
-    private func showAccessibilityAlert() {
-        let localized = { (key: String) in NSLocalizedString(key, bundle: .module, comment: "") }
-        let alert = NSAlert()
-        alert.messageText = localized("alert.accessibility.title")
-        alert.informativeText = localized("alert.accessibility.message")
-        alert.addButton(withTitle: localized("alert.accessibility.open"))
-        alert.addButton(withTitle: localized("alert.accessibility.later"))
-        if alert.runModal() == .alertFirstButtonReturn,
-           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
-    }
 }
 
 // MARK: - C callback (CGEventTap callback must be a global function)
 
-private func tapCallback(
+func tapCallback(
     proxy: CGEventTapProxy,
     type: CGEventType,
     event: CGEvent,
@@ -210,7 +263,7 @@ private func tapCallback(
 
     switch type {
     case .tapDisabledByTimeout, .tapDisabledByUserInput:
-        manager.handleTapDisabled()
+        manager.handleTapDisabled(type: type)
         return Unmanaged.passRetained(event)
     case .keyDown, .keyUp:
         return manager.handleKeyEvent(event, type: type)

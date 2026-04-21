@@ -3,14 +3,18 @@ import CtrlBCore
 
 final class StatusBarController: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    private let eventTap: EventTapManager
+    private let eventTap: EventTapControlling
     private let stats: StatisticsManager
 
-    init(eventTap: EventTapManager, stats: StatisticsManager) {
+    init(eventTap: EventTapControlling, stats: StatisticsManager) {
         self.eventTap = eventTap
         self.stats = stats
         super.init()
         setupStatusItem()
+        eventTap.onStateChange = { [weak self] state in
+            self?.applyStatusAppearance(for: state)
+        }
+        applyStatusAppearance(for: eventTap.state)
     }
 
     // MARK: - Setup
@@ -25,6 +29,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     // MARK: - NSMenuDelegate
 
     func menuWillOpen(_ menu: NSMenu) {
+        refreshStateIfNeeded()
         buildMenu(menu)
     }
 
@@ -39,9 +44,11 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         menu.addItem(disabled(localized("menu.header")))
         menu.addItem(.separator())
 
-        // Toggle
-        let toggleTitle = eventTap.isEnabled ? localized("menu.enabled") : localized("menu.disabled")
-        menu.addItem(action(toggleTitle, #selector(toggleEnabled)))
+        let menuModel = StatusMenuModelBuilder.build(for: eventTap.state)
+        menu.addItem(disabled(localized(menuModel.statusTitleKey)))
+        for item in menuModel.primaryItems {
+            menu.addItem(action(localized(item.titleKey), selector(for: item.action)))
+        }
         menu.addItem(.separator())
 
         // Today stats
@@ -72,6 +79,14 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         eventTap.toggle()
     }
 
+    @objc private func checkAgain() {
+        eventTap.checkAgain()
+    }
+
+    @objc private func openAccessibilitySettings() {
+        eventTap.openAccessibilitySettings()
+    }
+
     @objc private func resetStats() {
         stats.reset()
     }
@@ -93,6 +108,33 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         item.target = self
         return item
     }
+
+    private func selector(for action: StatusMenuPrimaryAction) -> Selector {
+        switch action {
+        case .pause, .resume:
+            return #selector(toggleEnabled)
+        case .openAccessibilitySettings:
+            return #selector(openAccessibilitySettings)
+        case .checkAgain:
+            return #selector(checkAgain)
+        }
+    }
+
+    private func applyStatusAppearance(for state: EventTapState) {
+        let localized = { (key: String) in NSLocalizedString(key, bundle: .module, comment: "") }
+        statusItem.button?.title = StatusMenuModelBuilder.statusItemTitle(for: state)
+        statusItem.button?.toolTip = localized(StatusMenuModelBuilder.tooltipKey(for: state))
+    }
+
+    private func refreshStateIfNeeded() {
+        _ = eventTap.syncPermissionState()
+    }
+
+    #if DEBUG
+    func debugRefreshStateIfNeeded() {
+        refreshStateIfNeeded()
+    }
+    #endif
 
     private func formatTime(_ seconds: Double) -> String {
         let localized = { (key: String) in NSLocalizedString(key, bundle: .module, comment: "") }

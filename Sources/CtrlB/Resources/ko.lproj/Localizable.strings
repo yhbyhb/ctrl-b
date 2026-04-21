@@ -2,12 +2,24 @@
 "menu.header" = "Ctrl+ㅠ → Ctrl+b 리매핑";
 "menu.enabled" = "✓ 활성화됨";
 "menu.disabled" = "비활성화됨";
+"menu.state.enabled" = "✓ 활성화됨";
+"menu.state.paused" = "일시 중지됨";
+"menu.state.permission_required" = "손쉬운 사용 권한 필요";
+"menu.state.unavailable" = "사용할 수 없음";
+"menu.action.pause" = "일시 중지";
+"menu.action.resume" = "다시 시작";
+"menu.action.open_accessibility_settings" = "손쉬운 사용 설정 열기…";
+"menu.action.check_again" = "다시 확인";
 "menu.today" = "오늘: %d회 · %@ 절약";
 "menu.total" = "누계: %d회 · %@ 절약";
 "menu.reset" = "통계 초기화";
 "menu.login.enabled" = "✓ 로그인 시 자동 실행";
 "menu.login.disabled" = "로그인 시 자동 실행";
 "menu.quit" = "종료";
+"tooltip.state.enabled" = "ctrl-b가 Ctrl+키 입력을 리매핑하고 있습니다.";
+"tooltip.state.paused" = "ctrl-b가 일시 중지된 상태입니다.";
+"tooltip.state.permission_required" = "ctrl-b에 손쉬운 사용 권한이 필요합니다.";
+"tooltip.state.unavailable" = "ctrl-b가 키보드 리매핑을 시작하지 못했습니다.";
 
 /* Accessibility Alert */
 "alert.accessibility.title" = "손쉬운 사용 권한 필요";

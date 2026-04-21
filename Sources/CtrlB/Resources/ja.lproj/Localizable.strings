@@ -2,12 +2,24 @@
 "menu.header" = "Ctrl+キー リマッピング";
 "menu.enabled" = "✓ 有効";
 "menu.disabled" = "無効";
+"menu.state.enabled" = "✓ 有効";
+"menu.state.paused" = "一時停止";
+"menu.state.permission_required" = "アクセシビリティの許可が必要です";
+"menu.state.unavailable" = "利用できません";
+"menu.action.pause" = "一時停止";
+"menu.action.resume" = "再開";
+"menu.action.open_accessibility_settings" = "アクセシビリティ設定を開く…";
+"menu.action.check_again" = "再確認";
 "menu.today" = "今日: %d回 · %@ 節約";
 "menu.total" = "累計: %d回 · %@ 節約";
 "menu.reset" = "統計をリセット";
 "menu.login.enabled" = "✓ ログイン時に起動";
 "menu.login.disabled" = "ログイン時に起動";
 "menu.quit" = "終了";
+"tooltip.state.enabled" = "ctrl-b は Ctrl+キー入力をリマップ中です。";
+"tooltip.state.paused" = "ctrl-b は一時停止中です。";
+"tooltip.state.permission_required" = "ctrl-b にはアクセシビリティの許可が必要です。";
+"tooltip.state.unavailable" = "ctrl-b はキーボードのリマップを開始できませんでした。";
 
 /* Accessibility Alert */
 "alert.accessibility.title" = "アクセシビリティの許可が必要です";

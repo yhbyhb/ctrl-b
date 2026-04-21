@@ -2,12 +2,24 @@
 "menu.header" = "Ctrl+键 重映射";
 "menu.enabled" = "✓ 已启用";
 "menu.disabled" = "已停用";
+"menu.state.enabled" = "✓ 已启用";
+"menu.state.paused" = "已暂停";
+"menu.state.permission_required" = "需要辅助功能权限";
+"menu.state.unavailable" = "不可用";
+"menu.action.pause" = "暂停";
+"menu.action.resume" = "继续";
+"menu.action.open_accessibility_settings" = "打开辅助功能设置…";
+"menu.action.check_again" = "再次检查";
 "menu.today" = "今天: %d次 · 节省%@";
 "menu.total" = "累计: %d次 · 节省%@";
 "menu.reset" = "重置统计";
 "menu.login.enabled" = "✓ 登录时启动";
 "menu.login.disabled" = "登录时启动";
 "menu.quit" = "退出";
+"tooltip.state.enabled" = "ctrl-b 正在重映射 Ctrl+按键输入。";
+"tooltip.state.paused" = "ctrl-b 当前已暂停。";
+"tooltip.state.permission_required" = "ctrl-b 需要辅助功能权限。";
+"tooltip.state.unavailable" = "ctrl-b 无法启动键盘重映射。";
 
 /* Accessibility Alert */
 "alert.accessibility.title" = "需要辅助功能权限";

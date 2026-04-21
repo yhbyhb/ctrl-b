@@ -5,71 +5,128 @@ import os
 private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "AppDelegate")
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var statusBarController: StatusBarController?
-    private var eventTapManager: EventTapManager?
-    private var permissionPollingTimer: Timer?
+    private var statusBarController: AnyObject?
+    private var eventTapManager: EventTapControlling?
+    private var permissionPollingTask: RepeatingTask?
+    private let permissionController: AccessibilityPermissionControlling
+    private let permissionObserver: AccessibilityPermissionObserving
+    private let repeatingTaskFactory: RepeatingTaskFactory
+    private let activationPolicySetter: (NSApplication.ActivationPolicy) -> Void
+    private let statisticsFactory: () -> StatisticsManager
+    private let eventTapFactory: EventTapFactory
+    private let statusBarFactory: StatusBarFactory
+    private var isMonitoringAccessibilityPermission = false
+    private var recoveryWorkItem: DispatchWorkItem?
+    private var currentPollingInterval: TimeInterval?
+
+    init(
+        permissionController: AccessibilityPermissionControlling = AccessibilityPermissionController(),
+        permissionObserver: AccessibilityPermissionObserving = AccessibilityPermissionObserver(),
+        repeatingTaskFactory: @escaping RepeatingTaskFactory = { interval, handler in
+            TimerRepeatingTask(interval: interval, handler: handler)
+        },
+        activationPolicySetter: @escaping (NSApplication.ActivationPolicy) -> Void = { policy in
+            NSApp.setActivationPolicy(policy)
+        },
+        statisticsFactory: @escaping () -> StatisticsManager = { StatisticsManager() },
+        eventTapFactory: @escaping EventTapFactory = { stats, permissionController in
+            EventTapManager(statisticsManager: stats, permissionController: permissionController)
+        },
+        statusBarFactory: @escaping StatusBarFactory = { eventTap, stats in
+            return StatusBarController(eventTap: eventTap, stats: stats)
+        }
+    ) {
+        self.permissionController = permissionController
+        self.permissionObserver = permissionObserver
+        self.repeatingTaskFactory = repeatingTaskFactory
+        self.activationPolicySetter = activationPolicySetter
+        self.statisticsFactory = statisticsFactory
+        self.eventTapFactory = eventTapFactory
+        self.statusBarFactory = statusBarFactory
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide Dock icon (menu bar only app)
-        NSApp.setActivationPolicy(.accessory)
+        activationPolicySetter(.accessory)
 
-        let stats = StatisticsManager()
-        let eventTap = EventTapManager(statisticsManager: stats)
-        statusBarController = StatusBarController(eventTap: eventTap, stats: stats)
+        let stats = statisticsFactory()
+        let eventTap = eventTapFactory(stats, permissionController)
+        statusBarController = statusBarFactory(eventTap, stats)
         eventTapManager = eventTap
+        startPermissionMonitoring()
 
-        // Check Accessibility permission (shows system dialog if not granted)
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-        let trusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
+        let trusted = permissionController.promptIfNeededOnFirstLaunch()
 
         if trusted {
-            eventTap.start()
+            eventTap.start(reason: .launch)
+            reconfigurePollingIfNeeded(for: eventTap.state)
         } else {
-            waitForAccessibilityPermission()
+            let state = eventTap.syncPermissionState()
+            reconfigurePollingIfNeeded(for: state)
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        stopPermissionMonitoring()
+        eventTapManager?.shutdown()
     }
 
     // MARK: - Accessibility Permission Monitoring
 
-    /// Monitors for permission grant via DistributedNotification (primary) + polling (fallback)
-    private func waitForAccessibilityPermission() {
-        log.info("Waiting for Accessibility permission")
+    private func startPermissionMonitoring() {
+        log.info("Starting Accessibility permission monitoring")
+        isMonitoringAccessibilityPermission = true
 
-        // Primary: observe com.apple.accessibility.api notification (unofficial, used by Loop, Hammerspoon, etc.)
-        DistributedNotificationCenter.default().addObserver(
-            self,
-            selector: #selector(handleAccessibilityChange),
-            name: .init("com.apple.accessibility.api"),
-            object: nil
-        )
-
-        // Fallback: polling every 3 seconds in case notification is missed
-        permissionPollingTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
-            self?.tryStartEventTap()
+        permissionObserver.startObserving { [weak self] in
+            self?.scheduleDelayedRecovery()
         }
+
+        reconfigurePollingIfNeeded(for: eventTapManager?.state ?? .permissionRequired)
     }
 
-    @objc private func handleAccessibilityChange() {
+    private func scheduleDelayedRecovery() {
         log.debug("Received com.apple.accessibility.api notification")
+        recoveryWorkItem?.cancel()
+
         // Notification arrives slightly before AXIsProcessTrusted() updates — wait 200ms
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-            self?.tryStartEventTap()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.tryRecoverEventTap()
         }
+        recoveryWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: workItem)
     }
 
-    private func tryStartEventTap() {
-        guard AXIsProcessTrusted() else { return }
+    private func tryRecoverEventTap() {
+        guard isMonitoringAccessibilityPermission else { return }
+        guard let eventTapManager else { return }
 
-        log.info("Accessibility permission granted — starting event tap")
-        stopPermissionMonitoring()
-        eventTapManager?.start()
+        let previousState = eventTapManager.state
+        let state = eventTapManager.syncPermissionState()
+        reconfigurePollingIfNeeded(for: state)
+        guard state != previousState else { return }
+
+        log.info("Accessibility permission state updated: \(String(describing: previousState)) -> \(String(describing: state))")
+    }
+
+    private func reconfigurePollingIfNeeded(for state: EventTapState) {
+        let interval = PermissionPollingPolicy.interval(for: state)
+        guard currentPollingInterval != interval else { return }
+
+        permissionPollingTask?.cancel()
+        currentPollingInterval = interval
+        permissionPollingTask = repeatingTaskFactory(interval) { [weak self] in
+            self?.tryRecoverEventTap()
+        }
     }
 
     private func stopPermissionMonitoring() {
-        DistributedNotificationCenter.default().removeObserver(
-            self, name: .init("com.apple.accessibility.api"), object: nil
-        )
-        permissionPollingTimer?.invalidate()
-        permissionPollingTimer = nil
+        isMonitoringAccessibilityPermission = false
+        permissionObserver.stopObserving()
+        permissionPollingTask?.cancel()
+        permissionPollingTask = nil
+        currentPollingInterval = nil
+        recoveryWorkItem?.cancel()
+        recoveryWorkItem = nil
     }
 }

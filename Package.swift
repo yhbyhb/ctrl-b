@@ -27,7 +27,7 @@ let package = Package(
         // 유닛 테스트
         .testTarget(
             name: "CtrlBTests",
-            dependencies: ["CtrlBCore"],
+            dependencies: ["CtrlBCore", "CtrlB"],
             path: "Tests/CtrlBTests"
         )
     ]
