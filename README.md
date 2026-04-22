@@ -65,6 +65,7 @@ The app runs in the menu bar with a **⌃b** icon. Click it to:
 - View remap statistics (today / cumulative)
 - Reset statistics
 - Toggle launch at login
+- Open the About panel (version, current IME, links)
 
 ## Development
 

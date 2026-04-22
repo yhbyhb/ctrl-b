@@ -16,6 +16,40 @@ func isInputMethodActive() -> Bool {
     return isInputMethod(sourceType)
 }
 
+/// Returns a human-readable description of the currently active keyboard input source,
+/// intended for display in the About panel.
+func currentInputSourceDisplay() -> InputSourceDisplay {
+    guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else {
+        return inputSourceDisplay(languageTag: nil, localizedName: nil, typeIsIME: false)
+    }
+
+    let typeString: String
+    if let ptr = TISGetInputSourceProperty(source, kTISPropertyInputSourceType) {
+        typeString = Unmanaged<CFString>.fromOpaque(ptr).takeUnretainedValue() as String
+    } else {
+        typeString = ""
+    }
+
+    let languageTag: String?
+    if let ptr = TISGetInputSourceProperty(source, kTISPropertyInputSourceLanguages),
+       let languages = Unmanaged<CFArray>.fromOpaque(ptr).takeUnretainedValue() as? [String] {
+        languageTag = languages.first
+    } else {
+        languageTag = nil
+    }
+
+    let localizedName: String?
+    if let ptr = TISGetInputSourceProperty(source, kTISPropertyLocalizedName) {
+        localizedName = Unmanaged<CFString>.fromOpaque(ptr).takeUnretainedValue() as String
+    } else {
+        localizedName = nil
+    }
+
+    return inputSourceDisplay(languageTag: languageTag,
+                              localizedName: localizedName,
+                              typeIsIME: isInputMethod(typeString))
+}
+
 /// Debug: logs current input source information.
 /// Call when isInputMethodActive() returns false to detect missing input methods early.
 func logCurrentInputSource() {

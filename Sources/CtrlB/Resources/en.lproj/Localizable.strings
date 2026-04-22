@@ -15,6 +15,7 @@
 "menu.reset" = "Reset Statistics";
 "menu.login.enabled" = "✓ Launch at Login";
 "menu.login.disabled" = "Launch at Login";
+"menu.about" = "About ctrl-b";
 "menu.quit" = "Quit";
 "tooltip.state.enabled" = "ctrl-b is actively remapping Ctrl+key input.";
 "tooltip.state.paused" = "ctrl-b is paused.";

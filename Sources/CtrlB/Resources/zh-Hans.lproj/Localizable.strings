@@ -15,6 +15,7 @@
 "menu.reset" = "重置统计";
 "menu.login.enabled" = "✓ 登录时启动";
 "menu.login.disabled" = "登录时启动";
+"menu.about" = "关于 ctrl-b";
 "menu.quit" = "退出";
 "tooltip.state.enabled" = "ctrl-b 正在重映射 Ctrl+按键输入。";
 "tooltip.state.paused" = "ctrl-b 当前已暂停。";

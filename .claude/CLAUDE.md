@@ -28,6 +28,8 @@ Split into two SPM targets:
   - `isHangul()`: Determines whether a UniChar is Korean (covers Jamo, Compatibility Jamo, and Syllables ranges)
   - `keyCodeToLowerASCII`: Dictionary mapping macOS physical keyCode (Int64) to lowercase ASCII (UInt8)
   - `StatisticsManager`: Tracks remap count and estimated time saved using UserDefaults (supports DI for testing)
+  - `inputSourceDisplay()`: Maps a TIS language tag + localized name into a flag-emoji/display-name struct for the About panel. Prefix-based matching with `zh-Hant*` checked before `zh*`.
+  - `isInputMethod()`: Pure check for `TISTypeKeyboardInputMode` source type.
 
 - **CtrlB** (`Sources/CtrlB/`) — App executable. Uses Cocoa, CoreGraphics, Carbon, and ServiceManagement frameworks.
   - `AppDelegate`: App initialization and Accessibility permission detection (via DistributedNotificationCenter `com.apple.accessibility.api` + 3-second polling fallback). Automatically starts the event tap when permission is granted, without requiring an app restart.
@@ -35,6 +37,7 @@ Split into two SPM targets:
   - `InputSourceUtils`: Detects IME input sources based on `TISCopyCurrentKeyboardInputSource` (`kTISTypeKeyboardInputMode` check). Includes `logCurrentInputSource()` for debugging.
   - `StatusBarController`: Uses NSMenuDelegate to refresh statistics each time the menu opens (no Timer needed)
   - `LaunchAtLoginManager`: Based on SMAppService (macOS 13+)
+  - `AboutPanelController`: Builds a custom Credits `NSAttributedString` (keycap demo, live IME indicator, lifetime stats, project links) and shows Apple's standard About panel via `orderFrontStandardAboutPanel`. Credits body is English-only; only the menu item title is localized.
 
 ## Key Design Decisions
 

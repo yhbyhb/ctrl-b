@@ -5,10 +5,13 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let eventTap: EventTapControlling
     private let stats: StatisticsManager
+    private let aboutPanel: AboutPanelController
 
     init(eventTap: EventTapControlling, stats: StatisticsManager) {
         self.eventTap = eventTap
         self.stats = stats
+        self.aboutPanel = AboutPanelController(stats: stats,
+                                                currentInputSource: currentInputSourceDisplay)
         super.init()
         setupStatusItem()
         eventTap.onStateChange = { [weak self] state in
@@ -68,6 +71,9 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         menu.addItem(action(loginTitle, #selector(toggleLaunchAtLogin)))
         menu.addItem(.separator())
 
+        // About
+        menu.addItem(action(localized("menu.about"), #selector(showAbout)))
+
         // Quit
         let quit = NSMenuItem(title: localized("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
@@ -93,6 +99,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func toggleLaunchAtLogin() {
         LaunchAtLoginManager.toggle()
+    }
+
+    @objc private func showAbout() {
+        aboutPanel.show(nil)
     }
 
     // MARK: - Helpers
