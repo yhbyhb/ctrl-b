@@ -55,3 +55,13 @@ Split into two SPM targets:
 - Korean is supported as a localization target (planned).
 - Commit messages in English (conventional commits).
 - Update README.md and CLAUDE.md in the same PR when changing features.
+
+## Planning documents
+
+All design specs, implementation plans, and plan comparisons live under `docs/plans/` with `YYYY-MM-DD-<topic>[-<kind>].md` naming. `<kind>` is optional:
+
+- `-design.md` — design spec (from superpowers `brainstorming`).
+- `-claude.md` / `-ultraplan.md` / `-comparison.md` — the `/plan` + Ultraplan dual-plan workflow.
+- no suffix — implementation plan (from superpowers `writing-plans` or ad-hoc).
+
+This overrides superpowers skills' default of `docs/superpowers/{plans,specs}/`.

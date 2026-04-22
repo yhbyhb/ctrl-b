@@ -8,7 +8,7 @@
 
 **Tech Stack:** Swift 5.9, SPM, macOS 13+, CoreGraphics (CGEventTap), Carbon (TIS API)
 
-**Spec:** `docs/superpowers/specs/2026-04-15-event-tap-reimpl-design.md`
+**Spec:** `docs/plans/2026-04-15-event-tap-reimpl-design.md`
 
 ---
 

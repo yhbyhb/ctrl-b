@@ -8,7 +8,7 @@
 
 **Tech Stack:** SwiftLint, GitHub Actions, POSIX sh
 
-**Spec:** `docs/superpowers/specs/2026-04-15-project-scaffolding-design.md`
+**Spec:** `docs/plans/2026-04-15-project-scaffolding-design.md`
 
 ---
 

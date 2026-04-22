@@ -8,7 +8,7 @@
 
 **Tech Stack:** Swift 5.9, SPM, CoreGraphics (CGEventTap), DispatchWorkItem
 
-**Spec:** `docs/superpowers/specs/2026-04-15-prefix-followup-design.md`
+**Spec:** `docs/plans/2026-04-15-prefix-followup-design.md`
 
 ---
 
