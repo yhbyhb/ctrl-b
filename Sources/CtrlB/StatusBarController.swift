@@ -1,8 +1,8 @@
 import Cocoa
 import CtrlBCore
 
-final class StatusBarController: NSObject, NSMenuDelegate {
-    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling {
+    private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let eventTap: EventTapControlling
     private let stats: StatisticsManager
     private let aboutPanel: AboutPanelController
@@ -13,10 +13,13 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         self.aboutPanel = AboutPanelController(stats: stats,
                                                 currentInputSource: currentInputSourceDisplay)
         super.init()
-        setupStatusItem()
         eventTap.onStateChange = { [weak self] state in
             self?.applyStatusAppearance(for: state)
         }
+    }
+
+    func start() {
+        setupStatusItem()
         applyStatusAppearance(for: eventTap.state)
     }
 

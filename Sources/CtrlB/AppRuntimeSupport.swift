@@ -71,7 +71,11 @@ final class TimerRepeatingTask: RepeatingTask {
 
 typealias RepeatingTaskFactory = (_ interval: TimeInterval, _ handler: @escaping () -> Void) -> RepeatingTask
 typealias EventTapFactory = (_ statisticsManager: StatisticsManager, _ permissionController: AccessibilityPermissionControlling) -> EventTapControlling
-typealias StatusBarFactory = (_ eventTap: EventTapControlling, _ statisticsManager: StatisticsManager) -> AnyObject
+protocol StatusBarControlling: AnyObject {
+    func start()
+}
+
+typealias StatusBarFactory = (_ eventTap: EventTapControlling, _ statisticsManager: StatisticsManager) -> StatusBarControlling
 
 enum PermissionPollingPolicy {
     static let activeInterval: TimeInterval = 1.0

@@ -209,7 +209,7 @@ final class AppDelegateTests: XCTestCase {
             activationPolicySetter: activationPolicySetter,
             statisticsFactory: { StatisticsManager(defaults: makeAppDelegateTestDefaults()) },
             eventTapFactory: { _, _ in eventTap },
-            statusBarFactory: { _, _ in NSObject() }
+            statusBarFactory: { _, _ in MockStatusBarController() }
         )
     }
 }
@@ -336,6 +336,11 @@ private final class MockRepeatingTask: RepeatingTask {
     func cancel() {
         cancelCallCount += 1
     }
+}
+
+private final class MockStatusBarController: StatusBarControlling {
+    private(set) var startCallCount = 0
+    func start() { startCallCount += 1 }
 }
 
 private final class MockRepeatingTaskFactory {

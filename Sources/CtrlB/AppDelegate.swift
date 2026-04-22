@@ -5,7 +5,7 @@ import os
 private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "AppDelegate")
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var statusBarController: AnyObject?
+    private var statusBarController: StatusBarControlling?
     private var eventTapManager: EventTapControlling?
     private var permissionPollingTask: RepeatingTask?
     private let permissionController: AccessibilityPermissionControlling
@@ -53,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let stats = statisticsFactory()
         let eventTap = eventTapFactory(stats, permissionController)
         statusBarController = statusBarFactory(eventTap, stats)
+        statusBarController?.start()
         eventTapManager = eventTap
         startPermissionMonitoring()
 
