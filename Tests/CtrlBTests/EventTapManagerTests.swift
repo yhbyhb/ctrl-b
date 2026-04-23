@@ -160,6 +160,128 @@ final class EventTapManagerTests: XCTestCase {
         XCTAssertEqual(receivedStates, [.enabled, .paused])
     }
 
+    // MARK: - syncPermissionState
+
+    func test_syncPermissionState_whenEnabled_returnsEnabledWithoutCheckingAgain() {
+        let permission = MockPermissionController(isTrusted: true)
+        let engine = MockEventTapEngine(startResult: true)
+        let sut = makeSUT(permission: permission, engine: engine)
+        _ = sut.checkAgain()  // move to .enabled
+
+        let state = sut.syncPermissionState()
+
+        XCTAssertEqual(state, .enabled)
+        XCTAssertEqual(engine.startCallCount, 1)  // no second checkAgain
+    }
+
+    func test_syncPermissionState_whenPaused_returnsPausedWithoutCheckingAgain() {
+        let permission = MockPermissionController(isTrusted: true)
+        let engine = MockEventTapEngine(startResult: true)
+        let sut = makeSUT(permission: permission, engine: engine)
+        _ = sut.checkAgain()
+        sut.toggle()  // move to .paused
+
+        let state = sut.syncPermissionState()
+
+        XCTAssertEqual(state, .paused)
+        XCTAssertEqual(engine.startCallCount, 1)  // no second checkAgain
+    }
+
+    func test_syncPermissionState_whenPermissionRequired_callsCheckAgain() {
+        let permission = MockPermissionController(isTrusted: false)
+        let engine = MockEventTapEngine(startResult: true)
+        let sut = makeSUT(permission: permission, engine: engine)
+        // state is .permissionRequired; now grant permission
+        permission.isTrustedValue = true
+
+        let state = sut.syncPermissionState()
+
+        XCTAssertEqual(state, .enabled)
+        XCTAssertEqual(engine.startCallCount, 1)  // checkAgain fired
+    }
+
+    func test_syncPermissionState_whenPermissionRevoked_returnsPermissionRequired() {
+        let permission = MockPermissionController(isTrusted: true)
+        let engine = MockEventTapEngine(startResult: true)
+        let sut = makeSUT(permission: permission, engine: engine)
+        _ = sut.checkAgain()
+        permission.isTrustedValue = false  // revoke mid-session
+
+        let state = sut.syncPermissionState()
+
+        XCTAssertEqual(state, .permissionRequired)
+    }
+
+    // MARK: - toggle edge cases
+
+    func test_toggle_fromPermissionRequired_attemptsCheckAgain() {
+        let permission = MockPermissionController(isTrusted: false)
+        let engine = MockEventTapEngine(startResult: true)
+        let sut = makeSUT(permission: permission, engine: engine)
+        // state is .permissionRequired; grant permission before toggle
+        permission.isTrustedValue = true
+
+        sut.toggle()
+
+        XCTAssertEqual(sut.state, .enabled)
+        XCTAssertEqual(engine.startCallCount, 1)
+    }
+
+    func test_toggle_fromUnavailable_attemptsCheckAgain() {
+        let permission = MockPermissionController(isTrusted: true)
+        let engine = MockEventTapEngine(startResult: false)  // tap create fails
+        let sut = makeSUT(permission: permission, engine: engine)
+        _ = sut.checkAgain()  // -> .unavailable
+        engine.startResult = true  // now succeeds
+
+        sut.toggle()
+
+        XCTAssertEqual(sut.state, .enabled)
+    }
+
+    // MARK: - shutdown
+
+    func test_shutdown_stopsEngineAndClearsFollowUp() {
+        let permission = MockPermissionController(isTrusted: true)
+        let engine = MockEventTapEngine(startResult: true)
+        let sut = makeSUT(permission: permission, engine: engine)
+        _ = sut.checkAgain()
+        sut.debugSetAwaitingFollowUpForTests(true)
+
+        sut.shutdown()
+
+        XCTAssertEqual(engine.stopCallCount, 1)
+        XCTAssertFalse(sut.isAwaitingFollowUp)
+    }
+
+    // MARK: - handleTapDisabled guard
+
+    func test_handleTapDisabled_whenPaused_doesNotReEnable() {
+        let permission = MockPermissionController(isTrusted: true)
+        let engine = MockEventTapEngine(startResult: true)
+        let sut = makeSUT(permission: permission, engine: engine)
+        _ = sut.checkAgain()
+        sut.toggle()  // -> .paused
+        let setEnabledCountBefore = engine.setEnabledCalls.count
+
+        sut.handleTapDisabled(type: .tapDisabledByUserInput)
+
+        XCTAssertEqual(sut.state, .paused)
+        XCTAssertEqual(engine.setEnabledCalls.count, setEnabledCountBefore)
+    }
+
+    func test_handleTapDisabled_whenPermissionRequired_doesNotReEnable() {
+        let permission = MockPermissionController(isTrusted: false)
+        let engine = MockEventTapEngine(startResult: true)
+        let sut = makeSUT(permission: permission, engine: engine)
+        // state is .permissionRequired
+
+        sut.handleTapDisabled(type: .tapDisabledByUserInput)
+
+        XCTAssertEqual(sut.state, .permissionRequired)
+        XCTAssertTrue(engine.setEnabledCalls.isEmpty)
+    }
+
     func test_localizedMenuKeys_exist() {
         let bundleLocalizations = Set(Bundle.module.localizations.map { $0.lowercased() })
         let expectedLocalizations = ["en", "ko", "ja", "zh-hans"]
