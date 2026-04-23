@@ -151,12 +151,10 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
 
     private func formatTime(_ seconds: Double) -> String {
         let localized = { (key: String) in NSLocalizedString(key, bundle: .module, comment: "") }
-        if seconds < 60 {
-            return String(format: localized("time.seconds"), seconds)
-        } else if seconds < 3600 {
-            return String(format: localized("time.minutes"), seconds / 60)
-        } else {
-            return String(format: localized("time.hours"), seconds / 3600)
+        switch TimeMagnitude(seconds) {
+        case .seconds(let s): return String(format: localized("time.seconds"), s)
+        case .minutes(let m): return String(format: localized("time.minutes"), m)
+        case .hours(let h): return String(format: localized("time.hours"), h)
         }
     }
 }

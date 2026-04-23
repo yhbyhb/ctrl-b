@@ -21,6 +21,15 @@ final class StatusBarControllerTests: XCTestCase {
         XCTAssertEqual(eventTap.checkAgainCallCount, 0)
     }
 
+    func test_init_wiresOnStateChangeCallback() {
+        let eventTap = MockStatusEventTapController(state: .enabled, refreshResult: .enabled)
+        XCTAssertNil(eventTap.onStateChange)
+
+        _ = StatusBarController(eventTap: eventTap, stats: StatisticsManager(defaults: makeStatusBarTestDefaults()))
+
+        XCTAssertNotNil(eventTap.onStateChange)
+    }
+
     func test_menuWillOpen_doesNotCheckAgainWhenEnabled() {
         let eventTap = MockStatusEventTapController(
             state: .enabled,

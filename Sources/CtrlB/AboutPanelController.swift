@@ -27,7 +27,7 @@ final class AboutPanelController: NSObject {
 
     // MARK: - Credits composition
 
-    private func buildCredits() -> NSAttributedString {
+    func buildCredits() -> NSAttributedString {
         let result = NSMutableAttributedString()
         result.append(keycapLine())
         result.append(blankLine())
@@ -130,12 +130,10 @@ final class AboutPanelController: NSObject {
     }
 
     private func formatSavedTime(_ seconds: Double) -> String {
-        if seconds < 60 {
-            return "~\(Int(seconds.rounded())) seconds"
+        switch TimeMagnitude(seconds) {
+        case .seconds(let s): return "~\(Int(s.rounded())) seconds"
+        case .minutes(let m): return "~\(Int(m.rounded())) minutes"
+        case .hours(let h): return "~\(Int(h.rounded())) hours"
         }
-        if seconds < 3600 {
-            return "~\(Int((seconds / 60).rounded())) minutes"
-        }
-        return "~\(Int((seconds / 3600).rounded())) hours"
     }
 }
