@@ -86,36 +86,43 @@ final class AboutPanelController: NSObject {
     }
 
     private func linksLine() -> NSAttributedString {
-        let github = NSMutableAttributedString(string: "GitHub")
-        github.addAttribute(.link,
-                            value: "https://github.com/yhbyhb/ctrl-b",
-                            range: NSRange(location: 0, length: github.length))
+        joinedLinksLine([
+            link("GitHub", href: "https://github.com/yhbyhb/ctrl-b"),
+            link("Issues", href: "https://github.com/yhbyhb/ctrl-b/issues"),
+            link("Sponsor", href: "https://github.com/sponsors/yhbyhb"),
+            link("Ko-fi", href: "https://ko-fi.com/yhbyhb")
+        ])
+    }
 
-        let issues = NSMutableAttributedString(string: "Report an issue")
-        issues.addAttribute(.link,
-                            value: "https://github.com/yhbyhb/ctrl-b/issues",
-                            range: NSRange(location: 0, length: issues.length))
-
-        let license = NSMutableAttributedString(string: "MIT License")
-        license.addAttribute(.link,
-                             value: "https://github.com/yhbyhb/ctrl-b/blob/main/LICENSE",
-                             range: NSRange(location: 0, length: license.length))
-
+    private func joinedLinksLine(_ parts: [NSAttributedString]) -> NSAttributedString {
         let separator = NSAttributedString(
             string: "  ·  ",
-            attributes: [.foregroundColor: NSColor.secondaryLabelColor]
+            attributes: [
+                .foregroundColor: NSColor.secondaryLabelColor,
+                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+            ]
         )
-
         let result = NSMutableAttributedString()
-        result.append(github)
-        result.append(separator)
-        result.append(issues)
-        result.append(separator)
-        result.append(license)
-        result.addAttribute(.font,
-                            value: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-                            range: NSRange(location: 0, length: result.length))
+        for (index, part) in parts.enumerated() {
+            if index > 0 { result.append(separator) }
+            result.append(part)
+        }
         return result
+    }
+
+    private func link(_ text: String, href: String) -> NSAttributedString {
+        let attributed = NSMutableAttributedString(string: text)
+        let range = NSRange(location: 0, length: attributed.length)
+        attributed.addAttribute(.link, value: href, range: range)
+        attributed.addAttribute(.underlineStyle,
+                                value: NSNumber(value: NSUnderlineStyle.single.rawValue),
+                                range: range)
+        attributed.addAttribute(.underlineColor, value: NSColor.linkColor, range: range)
+        attributed.addAttribute(.foregroundColor, value: NSColor.linkColor, range: range)
+        attributed.addAttribute(.font,
+                                value: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                                range: range)
+        return attributed
     }
 
     private func blankLine() -> NSAttributedString {

@@ -36,6 +36,6 @@
     <key>NSAppleEventsUsageDescription</key>
     <string>Intercepts keyboard events to fix Ctrl+key shortcuts when an IME is active.</string>
     <key>NSHumanReadableCopyright</key>
-    <string>© 2026 HanByul Yang. MIT License.</string>
+    <string>© 2026 HanByul Yang</string>
 </dict>
 </plist>
