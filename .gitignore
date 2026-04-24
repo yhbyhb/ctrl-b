@@ -7,3 +7,8 @@ DerivedData/
 xcuserdata/
 .DS_Store
 .claude/settings.local.json
+
+# AI planning artifacts (local only, not for contributors)
+docs/adr/*-claude.md
+docs/adr/*-ultraplan.md
+docs/adr/*-comparison.md

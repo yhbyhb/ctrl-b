@@ -65,10 +65,8 @@ Split into two SPM targets:
 
 ## Planning documents
 
-All design specs, implementation plans, and plan comparisons live under `docs/plans/` with `YYYY-MM-DD-<topic>[-<kind>].md` naming. `<kind>` is optional:
+Architecture decisions live in `docs/adr/` as numbered ADRs (`NNNN-topic.md`). These are the only planning docs checked into the repo — they record the *why* behind key design choices and are useful for contributors.
 
-- `-design.md` — design spec (from superpowers `brainstorming`).
-- `-claude.md` / `-ultraplan.md` / `-comparison.md` — the `/plan` + Ultraplan dual-plan workflow.
-- no suffix — implementation plan (from superpowers `writing-plans` or ad-hoc).
+AI planning artifacts (`*-claude.md`, `*-ultraplan.md`, `*-comparison.md`) are gitignored — keep them local only.
 
-This overrides superpowers skills' default of `docs/superpowers/{plans,specs}/`.
+Use GitHub Issues for bug reports, feature requests, and roadmap tracking.
