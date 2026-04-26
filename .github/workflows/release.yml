@@ -35,4 +35,5 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" \
             ctrl-b.app.zip \
-            --generate-notes
+            --generate-notes \
+            --draft
