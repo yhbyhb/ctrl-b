@@ -40,7 +40,7 @@ Any macOS IME registered as `TISTypeKeyboardInputMode` is supported — the app 
 
 Simple keyboard layouts (ABC, AZERTY, QWERTY, etc.) are unaffected — ctrl-b only activates when an IME is in use.
 
-## Screenshot
+## Screenshots
 
 <p align="center">
   <img src="docs/screenshots/menu.png" width="300" alt="ctrl-b menu" />

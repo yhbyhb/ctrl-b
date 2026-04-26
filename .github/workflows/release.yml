@@ -27,12 +27,12 @@ jobs:
         run: make app
 
       - name: Package
-        run: ditto -c -k --sequesterRsrc --keepParent ctrl-b.app "ctrl-b-${{ steps.version.outputs.VERSION }}.zip"
+        run: ditto -c -k --sequesterRsrc --keepParent ctrl-b.app ctrl-b.app.zip
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            "ctrl-b-${{ steps.version.outputs.VERSION }}.zip" \
+            ctrl-b.app.zip \
             --generate-notes

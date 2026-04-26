@@ -41,7 +41,7 @@ System Settings > Privacy & Security > Accessibility > Allow ctrl-b
 
 - **CtrlBCore** (`Sources/CtrlBCore/`) — Testable pure logic. No Cocoa/CoreGraphics dependencies.
 - **CtrlB** (`Sources/CtrlB/`) — App executable. Uses Cocoa, CoreGraphics, Carbon, ServiceManagement.
-- **CtrlBTests** (`Tests/CtrlBTests/`) — Unit tests for CtrlBCore.
+- **CtrlBTests** (`Tests/CtrlBTests/`) — Unit tests for both CtrlBCore and CtrlB (via protocol DI mocks).
 
 ## Conventions
 
