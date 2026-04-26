@@ -131,9 +131,9 @@ final class AboutPanelController: NSObject {
 
     private func formatSavedTime(_ seconds: Double) -> String {
         switch TimeMagnitude(seconds) {
-        case .seconds(let s): return "~\(Int(s.rounded())) seconds"
-        case .minutes(let m): return "~\(Int(m.rounded())) minutes"
-        case .hours(let h): return "~\(Int(h.rounded())) hours"
+        case .seconds(let sec): return "~\(Int(sec.rounded())) seconds"
+        case .minutes(let min): return "~\(Int(min.rounded())) minutes"
+        case .hours(let hrs): return "~\(Int(hrs.rounded())) hours"
         }
     }
 }

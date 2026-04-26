@@ -7,8 +7,12 @@ public enum TimeMagnitude: Equatable {
     case hours(Double)
 
     public init(_ seconds: Double) {
-        if seconds < 60 { self = .seconds(seconds) }
-        else if seconds < 3600 { self = .minutes(seconds / 60) }
-        else { self = .hours(seconds / 3600) }
+        if seconds < 60 {
+            self = .seconds(seconds)
+        } else if seconds < 3600 {
+            self = .minutes(seconds / 60)
+        } else {
+            self = .hours(seconds / 3600)
+        }
     }
 }
