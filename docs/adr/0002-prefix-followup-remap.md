@@ -1,128 +1,129 @@
-# Design: Prefix Follow-up Key Remap
+# ADR 0002: Prefix Follow-up Key Remap
 
-## 문제
+## Problem
 
-한글 IME에서 tmux prefix(`Ctrl+b`) 후 명령키(`n`, `c`, `p` 등)를 누르면, 한글 자모(`ㅜ`, `ㅊ`, `ㅔ` 등)가 전달되어 tmux가 명령을 인식하지 못한다. `[` 같은 기호는 IME 영향을 받지 않아 정상 동작.
+With Korean IME active, after the tmux prefix (`Ctrl+b`) the command key (`n`, `c`, `p`, etc.) is delivered as a Korean jamo character (`ㅜ`, `ㅊ`, `ㅔ`, etc.), so tmux cannot recognize the command. Symbol keys like `[` are unaffected by the IME and work normally.
 
-## 해결
+## Solution
 
-Ctrl+b 리매핑 직후 **1.5초 이내** 다음 **modifier 없는 알파벳 keyDown** 1개를 한글→영문으로 리매핑한다.
+Immediately after a Ctrl+b remap, also remap the next **modifier-free alphabet keyDown** within **1.5 seconds** from Korean to the corresponding ASCII character.
 
-## 대상 prefix 키
+## Target Prefix Key
 
-- 현재: **Ctrl+b만** (keyCode 11)
-- `prefixKeyCode` 프로퍼티로 관리하여 향후 설정 변경 가능
+- Currently: **Ctrl+b only** (keyCode 11)
+- Managed via a `prefixKeyCode` property for future configurability
 
-## 동작 흐름
+## Event Flow
 
 ```
-Ctrl+b keyDown 리매핑 발생
+Ctrl+b keyDown remap fires
   → pendingFollowUp = true
-  → 1.5초 타이머 시작 (DispatchWorkItem)
+  → start 1.5s timer (DispatchWorkItem)
 
-다음 keyDown 도착
-  ├─ pendingFollowUp == false → 기존 로직 (변경 없음)
+Next keyDown arrives
+  ├─ pendingFollowUp == false → normal logic (unchanged)
   │
   └─ pendingFollowUp == true
-       ├─ modifier 없음 + 알파벳 키 (keyCodeToLowerASCII에 존재) + 한글 IME
-       │    → 원본 폐기 + 합성 이벤트 생성/post (기존 consume+recreate 기법 동일)
+       ├─ no modifier + alphabet key (in keyCodeToLowerASCII) + Korean IME
+       │    → discard original + create/post synthetic event (same consume+recreate technique)
        │    → recordRemap()
        │
-       ├─ 그 외 (기호, Enter, Esc, modifier 포함 키 등)
-       │    → 통과 (이벤트 수정 없음)
+       ├─ anything else (symbol, Enter, Esc, key with modifier, etc.)
+       │    → pass through (no event modification)
        │
-       └─ 어떤 키든 pendingFollowUp = false, 타이머 취소
+       └─ regardless of key: pendingFollowUp = false, cancel timer
 
-타이머 만료 (1.5초)
+Timer fires (1.5s)
   → pendingFollowUp = false
 
-keyUp 이벤트
-  → pendingFollowUp 플래그에 영향 없음
+keyUp events
+  → pendingFollowUp flag unaffected
 ```
 
-## 변경 파일
+## Files Changed
 
-### 수정: `Sources/ctrl_b_helper/EventTapManager.swift`
+### Modified: `Sources/ctrl_b_helper/EventTapManager.swift`
 
-**추가할 상태:**
+**New state:**
 ```swift
-private let prefixKeyCode: Int64 = 11  // Ctrl+b (향후 설정 가능)
+private let prefixKeyCode: Int64 = 11  // Ctrl+b (configurable in the future)
 private var pendingFollowUp = false
 private var followUpTimer: DispatchWorkItem?
 private let followUpTimeout: TimeInterval = 1.5
 ```
 
-**handleKeyEvent 변경:**
+**handleKeyEvent changes:**
 
-1. 기존 Ctrl+알파벳 리매핑 로직 후, keyCode가 `prefixKeyCode`이고 keyDown이면 follow-up 플래그 설정 + 타이머 시작.
+1. After the existing Ctrl+alphabet remap logic, if the keyCode matches `prefixKeyCode` and it is a keyDown: set the follow-up flag and start the timer.
 
-2. 메서드 진입 시 `pendingFollowUp`이 true이고 keyDown이면 follow-up 분기:
-   - modifier 없음 + 알파벳 키 + 한글 IME → consume+recreate (sentinel 포함) + **`keyboardSetUnicodeString`으로 명시적 ASCII 설정**
-   - 조건 불일치 → 통과
-   - 어느 경우든 플래그 리셋 + 타이머 취소
+2. At method entry, if `pendingFollowUp` is true and it is a keyDown, enter the follow-up branch:
+   - no modifier + alphabet key + Korean IME → consume+recreate (with sentinel) + **set explicit ASCII via `keyboardSetUnicodeString`**
+   - condition not met → pass through
+   - in either case: reset flag + cancel timer
 
-**follow-up 리매핑은 Ctrl+키 리매핑과 달리 `keyboardSetUnicodeString`으로 명시적 ASCII를 설정해야 한다.** 스파이크 테스트(`spike_followup.swift`)에서 검증:
-- keyCode만 설정한 합성 이벤트 → 한글 IME가 여전히 ㅜ로 변환 (FAIL)
-- keyCode + `keyboardSetUnicodeString('n')` → 영문 n 입력 (PASS)
+**Why follow-up remapping requires `keyboardSetUnicodeString` but Ctrl+key does not:**
+Spike tests (`spike_followup.swift`) confirmed:
+- Synthetic event with keyCode only → Korean IME still converts to ㅜ (FAIL)
+- Synthetic event with keyCode + `keyboardSetUnicodeString('n')` → English n delivered (PASS)
 
-Ctrl+키는 modifier가 있어 IME가 이미 제어문자로 처리하므로 명시적 unicode 불필요했지만, modifier 없는 순수 알파벳은 IME가 한글로 변환하므로 명시적 설정이 필수.
+Ctrl+key events have a modifier, so the IME already treats them as control characters and the explicit Unicode string is unnecessary. Bare alphabet keys without a modifier are converted to Hangul by the IME, so the explicit string is required.
 
-`keyCodeToLowerASCII`로 keyCode → ASCII 변환 후 `UniChar`로 설정. keyDown에만 적용, keyUp에는 불필요 (스파이크 테스트에서 keyUp 미설정으로도 정상 동작 확인).
+Use `keyCodeToLowerASCII` to map keyCode → ASCII, then set as `UniChar`. Apply to keyDown only; keyUp does not need it (confirmed in spike tests).
 
-합성 이벤트에 sentinel을 설정하여 무한루프 방지. 통계도 keyDown에서만 recordRemap().
+Set the sentinel on synthetic events to prevent infinite loops. Call `recordRemap()` on keyDown only.
 
-**주의: follow-up 체크는 Ctrl+키 체크보다 먼저 실행.** 순서:
-1. sentinel 체크 (무한루프 방지)
-2. follow-up 체크 (pendingFollowUp == true && keyDown)
-3. Ctrl+알파벳 체크 (기존 로직)
+**Follow-up check runs before Ctrl+key check.** Order:
+1. Sentinel check (infinite loop guard)
+2. Follow-up check (`pendingFollowUp == true && keyDown`)
+3. Ctrl+alphabet check (existing logic)
 
-이유: follow-up 키는 modifier가 없으므로 Ctrl 체크에 걸리지 않지만, Ctrl+b → Ctrl+b 같은 경우(prefix 취소 후 재시도) follow-up이 먼저 소비되고 두 번째 Ctrl+b가 정상 처리되어야 함. 실제로 Ctrl+b는 modifier가 있으므로 follow-up 조건(modifier 없음)에 걸리지 않아 통과 후 Ctrl+키 로직에서 처리됨. 순서가 올바름.
+Rationale: follow-up keys have no modifier so they do not reach the Ctrl check anyway. In the Ctrl+b → Ctrl+b case (prefix cancel + retry), the second Ctrl+b has a modifier and fails the follow-up condition (no modifier required), so it passes through to the Ctrl+key logic correctly.
 
-### 유지 (변경 없음)
+### Unchanged
 
 - `Sources/ctrl_b_helper/InputSourceUtils.swift`
 - `Sources/CtrlBHelperCore/HangulUtils.swift`
 - `Sources/CtrlBHelperCore/StatisticsManager.swift`
 - `Sources/ctrl_b_helper/StatusBarController.swift`
 
-## 타임아웃 값 근거
+## Timeout Rationale
 
-- 숙련 tmux 사용자: prefix 후 100~500ms 내에 명령키 입력
-- 느린/망설이는 사용자: 1초 이내
-- 1.5초: 99%+ 커버 + 오탐 방지 (Karabiner-Elements의 `to_if_alone_timeout` 1000ms보다 보수적)
-- 오탐 시 피해: 한글 1글자 대신 영문 1글자 입력 → 백스페이스 1회로 복구
+- Proficient tmux users: command key within 100–500 ms after prefix
+- Slow/hesitant users: within 1 second
+- 1.5 s: covers 99%+ of cases while minimizing false positives (more conservative than Karabiner-Elements' `to_if_alone_timeout` of 1000 ms)
+- False positive impact: one English character instead of one Hangul character — correctable with a single Backspace
 
-## 안전장치
+## Safety Mechanisms
 
-1. **modifier 키 포함 시 제외** — Ctrl+b 후 Ctrl+C는 follow-up이 아닌 새 단축키. modifier가 있으면 follow-up 조건 불일치 → 통과 → 기존 Ctrl+키 로직에서 처리.
-2. **1회 소비** — 어떤 keyDown이든 pendingFollowUp을 false로 리셋. 다음 입력으로 누수 없음.
-3. **1.5초 자동 만료** — Ctrl+b 후 한참 뒤에 한글 입력해도 영향 없음.
-4. **keyUp 처리** — follow-up은 keyDown만 리매핑, keyUp은 원본 그대로 통과. 스파이크 테스트에서 keyDown에만 `keyboardSetUnicodeString`을 설정하고 keyUp은 미설정으로 recreate한 결과 정상 동작 확인. tmux는 keyDown만으로 prefix 명령을 처리하므로 keyUp 불일치의 실질적 영향 없음. pendingFollowUp 플래그는 keyDown에서만 체크/소비되므로 keyUp은 자연스럽게 통과.
+1. **Modifier keys excluded** — Ctrl+b followed by Ctrl+C is a new shortcut, not a follow-up. A key with a modifier fails the follow-up condition and passes through to the Ctrl+key logic.
+2. **Single-shot consumption** — any keyDown resets `pendingFollowUp` to false. No leakage into subsequent input.
+3. **1.5 s auto-expiry** — Hangul typed well after a Ctrl+b is unaffected.
+4. **keyUp handling** — follow-up remaps keyDown only; keyUp passes through as-is. Spike tests confirmed that setting `keyboardSetUnicodeString` on keyDown only (not keyUp) works correctly. tmux processes prefix commands on keyDown, so mismatched keyUp has no practical effect. The `pendingFollowUp` flag is only checked/consumed on keyDown, so keyUp naturally passes through.
 
-## 테스트 계획
+## Test Plan
 
-### 수동 테스트 — 핵심 동작
+### Manual tests — core behavior
 
-| # | 환경 | 조작 | 기대 결과 | PASS 기준 |
-|---|------|------|-----------|-----------|
-| 1 | Ghostty + tmux + 한글 | Ctrl+b → n | next-window 실행 | 창 전환 확인 |
-| 2 | Ghostty + tmux + 한글 | Ctrl+b → c | new-window 실행 | 새 창 생성 |
-| 3 | Ghostty + tmux + 한글 | Ctrl+b → p | previous-window 실행 | 창 전환 확인 |
-| 4 | Ghostty + tmux + 한글 | Ctrl+b → [ | copy mode 진입 | 스크롤 가능 확인 (기호, 기존 동작) |
-| 5 | Ghostty + tmux + 한글 | Ctrl+b → d | detach | tmux 세션에서 분리 |
+| # | Environment | Input | Expected | PASS Criteria |
+|---|-------------|-------|----------|---------------|
+| 1 | Ghostty + tmux + Korean | Ctrl+b → n | next-window fires | Window switches |
+| 2 | Ghostty + tmux + Korean | Ctrl+b → c | new-window fires | New window created |
+| 3 | Ghostty + tmux + Korean | Ctrl+b → p | previous-window fires | Window switches |
+| 4 | Ghostty + tmux + Korean | Ctrl+b → [ | copy mode entered | Scrolling works (symbol, pre-existing behavior) |
+| 5 | Ghostty + tmux + Korean | Ctrl+b → d | detach | Detached from tmux session |
 
-### 수동 테스트 — 엣지 케이스
+### Manual tests — edge cases
 
-| # | 조작 | 기대 결과 |
-|---|------|-----------|
-| 6 | 한글 + Ctrl+b → (2초 대기) → 한글 입력 | 한글 정상 입력 (리매핑 안 됨) |
-| 7 | 한글 + Ctrl+b → Enter | Enter 통과, follow-up 리셋 |
-| 8 | 한글 + Ctrl+b → Ctrl+b (prefix 재시도) | 첫 Ctrl+b에서 follow-up 리셋 (modifier 있어서 불일치), 두 번째 Ctrl+b 정상 처리 |
-| 9 | 영문 + Ctrl+b → n | 기존 동작 (리매핑 불필요, 간섭 없음) |
-| 10 | 한글 + Ctrl+C → 한글 입력 | 한글 정상 입력 (Ctrl+C는 prefix가 아니므로 follow-up 없음) |
+| # | Input | Expected |
+|---|-------|----------|
+| 6 | Korean + Ctrl+b → (wait 2 s) → Hangul | Hangul typed normally (no remap) |
+| 7 | Korean + Ctrl+b → Enter | Enter passes through; follow-up reset |
+| 8 | Korean + Ctrl+b → Ctrl+b (retry) | Follow-up reset on first Ctrl+b (modifier → condition fail); second Ctrl+b processed normally |
+| 9 | English + Ctrl+b → n | Existing behavior (no remap needed; no interference) |
+| 10 | Korean + Ctrl+C → Hangul | Hangul typed normally (Ctrl+C is not a prefix; no follow-up) |
 
-### 수동 테스트 — 통계
+### Manual tests — statistics
 
-| # | 조작 | 기대 결과 |
-|---|------|-----------|
-| 11 | 한글 + Ctrl+b → n | 카운트 +2 (Ctrl+b 1회 + follow-up n 1회) |
+| # | Input | Expected |
+|---|-------|----------|
+| 11 | Korean + Ctrl+b → n | Count +2 (Ctrl+b once + follow-up n once) |

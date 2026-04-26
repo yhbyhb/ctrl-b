@@ -1,92 +1,92 @@
-# Design: EventTapManager 리팩토링 — 이벤트 폐기 + 재생성 방식
+# ADR 0001: EventTapManager Refactor — Event Discard + Recreate
 
-## 배경
+## Background
 
-macOS 한글 IME 활성 상태에서 Ctrl+키 단축키(tmux prefix 등)가 터미널에서 동작하지 않는 문제를 해결한다.
+Ctrl+key shortcuts (e.g., tmux prefix) fail silently in terminals when macOS Korean IME is active.
 
-디버깅 결과, CGEvent 레벨에서는 유니코드 문자열이 이미 정상(U+0002)이지만, 터미널이 `interpretKeyEvents:` → 한글 IME를 통해 이벤트를 처리하는 과정에서 IME가 이벤트를 소비하는 것이 원인이다. 상세 분석은 `docs/research-korean-ime-ctrl-key.md` 참조.
+Debugging revealed that the CGEvent Unicode string is already correct (U+0002) at the CGEvent level. The real problem is that the Korean IME consumes the event at the `interpretKeyEvents:` layer during terminal key processing. See `docs/research-korean-ime-ctrl-key.md` for the full analysis.
 
-기존 접근법(유니코드 문자열 수정)은 효과가 없으므로, **원본 이벤트를 폐기하고 IME 메타데이터가 없는 새 CGEvent를 생성**하는 방식으로 전환한다.
+The prior approach (modifying the Unicode string in-place) does not work. The decision was to switch to **discarding the original event and creating a new CGEvent free of IME metadata**.
 
-## 재작성 대상 범위
+## Rewrite Scope
 
-**모든 Ctrl+키를 재작성하지 않는다.** 한글 IME의 영향을 받는 키만 대상으로 한다:
+**Not all Ctrl+key events are rewritten** — only those affected by the Korean IME:
 
-- **대상**: `keyCodeToLowerASCII`에 등록된 26개 알파벳 키(a-z)의 keyCode만 재작성
-- **비대상 (통과)**: Ctrl+Space, Ctrl+화살표, Ctrl+숫자, Ctrl+문장부호, Ctrl+Tab, Ctrl+Enter 등
+- **Target**: Only the 26 alphabet keyCodes (a–z) registered in `keyCodeToLowerASCII`
+- **Pass-through**: Ctrl+Space, Ctrl+arrow, Ctrl+number, Ctrl+punctuation, Ctrl+Tab, Ctrl+Enter, etc.
 
-한글 IME는 알파벳 키만 한글 자모로 변환하므로, 알파벳 외 키는 IME 간섭이 없어 재작성이 불필요하다. `keyCodeToLowerASCII` 딕셔너리를 대상 keyCode 필터로 재활용한다.
+The Korean IME only converts alphabet keys to Hangul jamo, so non-alphabet keys are not subject to IME interference and do not need rewriting. The `keyCodeToLowerASCII` dictionary is reused as the target keyCode filter.
 
-## 이벤트 처리 흐름
+## Event Handling Flow
 
 ```
 CGEventTap callback (keyDown / keyUp)
   │
-  ├─ eventSourceUserData == sentinel? → 통과 (합성 이벤트, 무한루프 방지)
+  ├─ eventSourceUserData == sentinel? → pass (synthetic event, infinite loop guard)
   │
-  ├─ tapDisabledByTimeout / tapDisabledByUserInput? → 탭 재활성화
+  ├─ tapDisabledByTimeout / tapDisabledByUserInput? → re-enable tap
   │
   └─ keyDown / keyUp
        │
-       ├─ 대상 modifier 포함? (현재: Ctrl)
+       ├─ Contains target modifier? (currently: Ctrl)
        │    │
-       │    ├─ keyCode가 알파벳 키? (keyCodeToLowerASCII에 존재)
+       │    ├─ keyCode is alphabet? (exists in keyCodeToLowerASCII)
        │    │    │
-       │    │    ├─ 한글 입력 소스 활성?
+       │    │    ├─ Korean input source active?
        │    │    │    │
-       │    │    │    ├─ YES → 원본 폐기(return nil) + 새 CGEvent 생성/post
-       │    │    │    │        + 통계 기록 (keyDown일 때만)
+       │    │    │    ├─ YES → discard original (return nil) + create/post new CGEvent
+       │    │    │    │        + record stats (keyDown only)
        │    │    │    │
-       │    │    │    └─ NO → 통과
+       │    │    │    └─ NO → pass through
        │    │    │
-       │    │    └─ 알파벳 키 아님 → 통과
+       │    │    └─ Not an alphabet key → pass through
        │    │
-       │    └─ 대상 modifier 없음 → 통과
+       │    └─ No target modifier → pass through
        │
-       └─ modifier 없음 → 통과
+       └─ No modifier → pass through
 ```
 
-## 변경 파일 목록
+## Files Changed
 
-### 수정: `Sources/ctrl_b_helper/EventTapManager.swift`
+### Modified: `Sources/ctrl_b_helper/EventTapManager.swift`
 
-핵심 변경 대상. `handleKeyEvent` 로직을 전면 교체한다.
+Core change. The `handleKeyEvent` logic is fully replaced.
 
-**eventMask 변경:**
-- 기존: `keyDown` + `tapDisabled` 2종
-- 신규: `keyDown` + `keyUp` + `tapDisabled` 2종 (keyUp도 동일하게 처리해야 터미널이 일관된 이벤트 쌍을 받음)
+**eventMask change:**
+- Before: `keyDown` + `tapDisabled` (2 types)
+- After: `keyDown` + `keyUp` + `tapDisabled` (3 types — terminals need consistent keyDown/keyUp pairs)
 
-**대상 modifier 관리:**
+**Target modifier:**
 ```swift
 private let targetModifiers: CGEventFlags = [.maskControl]
 ```
-나중에 `.maskCommand`를 추가하면 Cmd+키도 처리 가능. 체크 로직:
+Adding `.maskCommand` later would extend coverage to Cmd+key. Check:
 ```swift
 !event.flags.intersection(targetModifiers).isEmpty
 ```
 
-**대상 keyCode 필터:**
+**Target keyCode filter:**
 ```swift
 let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
 guard keyCodeToLowerASCII[keyCode] != nil else {
-    return Unmanaged.passRetained(event)  // 알파벳 키가 아니면 통과
+    return Unmanaged.passRetained(event)  // not an alphabet key — pass through
 }
 ```
 
-**무한루프 방지:**
+**Infinite loop prevention:**
 ```swift
 private static let sentinel: Int64 = 0x4342_4852_4D4150
 
-// 콜백 진입 시:
+// At callback entry:
 if event.getIntegerValueField(.eventSourceUserData) == sentinel {
     return Unmanaged.passRetained(event)
 }
 
-// 합성 이벤트 생성 시:
+// When creating synthetic event:
 newEvent.setIntegerValueField(.eventSourceUserData, value: Self.sentinel)
 ```
 
-**합성 이벤트 생성:**
+**Synthetic event creation:**
 ```swift
 let source = CGEventSource(stateID: .hidSystemState)
 let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
@@ -96,36 +96,36 @@ guard let newEvent = CGEvent(keyboardEventSource: source, virtualKey: keyCode, k
     return Unmanaged.passRetained(event)
 }
 
-newEvent.flags = event.flags  // 원본 modifier 보존 (Ctrl+Shift 등)
+newEvent.flags = event.flags  // preserve original modifiers (e.g. Ctrl+Shift)
 newEvent.setIntegerValueField(.eventSourceUserData, value: Self.sentinel)
 newEvent.post(tap: .cghidEventTap)
 
-// 통계는 keyDown에서만 기록 (keyUp에서 중복 집계 방지)
+// Record stats on keyDown only (avoid double-counting on keyUp)
 if isKeyDown {
     statisticsManager.recordRemap()
 }
 
-return nil  // 원본 폐기
+return nil  // discard original
 ```
 
-**post 위치와 폴백 전략:**
+**Post location and fallback strategy:**
 
-합성 이벤트를 `.cghidEventTap`에 post하면 이벤트가 전체 파이프라인을 거치므로 IME가 다시 소비할 가능성이 있다. 폴백 단계:
+Posting to `.cghidEventTap` routes the event through the full pipeline, so the IME could theoretically consume the synthetic event again. Fallback tiers:
 
-1. **`.cghidEventTap`에 post** (기본값). 합성 이벤트는 `CGEventSource(stateID: .hidSystemState)`로 생성되어 IME composition 상태와 무관하므로, 터미널이 직접 처리할 가능성이 높다. cmd-eikana(일본어 키보드 도구)가 동일 방식으로 동작 중.
-2. **합성 이벤트에 `keyboardSetUnicodeString`으로 명시적 제어문자(ascii & 0x1F)를 설정하여 `.cghidEventTap`에 post** (keyDown에만 적용, keyUp에는 불필요). 1번과의 차이: 이벤트에 유니코드 문자열이 명시되므로 터미널이 IME를 거치지 않고 직접 해석할 단서가 추가됨.
-3. **근본적으로 다른 접근이 필요한 경우**: 입력 소스 전환 방식 등 별도 설계 필요 (현재 스펙 범위 밖).
+1. **Post to `.cghidEventTap`** (default). Synthetic events created with `CGEventSource(stateID: .hidSystemState)` are independent of IME composition state, so terminals are likely to process them directly. cmd-eikana (Japanese keyboard tool) uses the same approach successfully.
+2. **Explicitly set control character via `keyboardSetUnicodeString` (ascii & 0x1F), then post to `.cghidEventTap`** (keyDown only; unnecessary for keyUp). The difference from (1): the event carries an explicit Unicode string, giving the terminal a direct hint to bypass IME interpretation.
+3. **Fundamentally different approach**: input source switching or other techniques (outside current scope).
 
-기본값으로 1번을 구현하되, 2번은 테스트 후 필요 시 적용. 참고: `.cgSessionEventTap`에 post하는 것은 우리 탭이 이미 `.cgSessionEventTap`에 걸려 있어 1번과 실질적 차이가 없으므로 폴백으로 유효하지 않다.
+Tier 1 is implemented by default; tier 2 is applied if tier 1 proves insufficient. Note: posting to `.cgSessionEventTap` is not a valid fallback — our tap is already attached at `.cgSessionEventTap`, so it has no practical difference from tier 1.
 
-**기존 로직 제거:**
-- `isHangul()` 체크 기반 분기 제거
-- `keyCodeToLowerASCII` 기반 유니코드 변환 제거 (단, keyCode 필터로는 계속 사용)
-- 디버그 `NSLog`는 개발 중 유지, 완료 후 제거
+**Removed logic:**
+- `isHangul()` check-based branching
+- Unicode conversion via `keyCodeToLowerASCII` (retained as keyCode filter only)
+- Debug `NSLog` calls (removed after development)
 
-### 신규: `Sources/ctrl_b_helper/InputSourceUtils.swift`
+### New: `Sources/ctrl_b_helper/InputSourceUtils.swift`
 
-한글 입력 소스 감지 유틸리티. Carbon 프레임워크(`TIS*` API)에 의존하므로 **메인 앱 타겟**에 배치한다. (Core 타겟은 시스템 API 의존 없는 순수 로직 원칙 유지)
+Korean input source detection utility. Depends on the Carbon framework (`TIS*` APIs), so it lives in the **main app target** (not CtrlBCore, which must remain free of system API dependencies).
 
 ```swift
 import Carbon
@@ -135,7 +135,7 @@ func isKoreanInputSourceActive() -> Bool {
         return false
     }
 
-    // 1차: language 배열에서 "ko" 확인
+    // Step 1: check "ko" in language array
     if let langPtr = TISGetInputSourceProperty(source, kTISPropertyInputSourceLanguages) {
         let languages = Unmanaged<CFArray>.fromOpaque(langPtr).takeUnretainedValue() as? [String] ?? []
         if languages.contains("ko") {
@@ -143,7 +143,7 @@ func isKoreanInputSourceActive() -> Bool {
         }
     }
 
-    // 2차: input source ID에 "Korean" 포함 여부 (language 배열이 비어있는 입력기 대비)
+    // Step 2: check "Korean" in input source ID (for IMEs with empty language arrays)
     if let idPtr = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) {
         let id = Unmanaged<CFString>.fromOpaque(idPtr).takeUnretainedValue() as String
         if id.localizedCaseInsensitiveContains("korean") {
@@ -155,88 +155,88 @@ func isKoreanInputSourceActive() -> Bool {
 }
 ```
 
-**감지 전략 (2단계):**
-1. `kTISPropertyInputSourceLanguages` 배열에 `"ko"` 포함 여부 — Apple IME 및 대부분의 서드파티 커버
-2. `kTISPropertyInputSourceID` 문자열에 `"Korean"` 포함 여부 — language 배열이 비어있거나 누락된 입력기 대비
+**Two-step detection:**
+1. `kTISPropertyInputSourceLanguages` array contains `"ko"` — covers Apple IME and most third-party IMEs
+2. `kTISPropertyInputSourceID` string contains `"Korean"` — fallback for IMEs with empty or missing language arrays
 
-`isKoreanInputSourceActive()`가 `false`를 반환하면 핵심 기능이 꺼지므로, **개발 중 Ctrl+알파벳 이벤트에서 이 함수가 false를 반환할 때 입력 소스 ID/language를 NSLog로 출력**하여 누락되는 입력기를 조기에 발견한다.
+When `isKoreanInputSourceActive()` returns false, the core feature is disabled. During development, log the input source ID, localizedName, and language array whenever the function returns false on a Ctrl+alphabet event — this catches undetected IMEs early.
 
-### 유지: `Sources/CtrlBHelperCore/HangulUtils.swift`
+### Unchanged: `Sources/CtrlBHelperCore/HangulUtils.swift`
 
-`isHangul()`, `keyCodeToLowerASCII`는 새 로직에서 직접 리매핑에 사용하지 않지만 제거하지 않는다.
-- `keyCodeToLowerASCII`는 대상 keyCode 필터로 재활용
-- 코드 크기가 작고 테스트 3개 파일이 이를 참조
-- 향후 통계/진단용으로 활용 가능
+`isHangul()` and `keyCodeToLowerASCII` are not used directly for remapping in the new logic, but are kept:
+- `keyCodeToLowerASCII` is reused as the target keyCode filter
+- Small code size; 3 test files reference it
+- Potentially useful for diagnostics or future statistics
 
-### 유지: `Sources/CtrlBHelperCore/StatisticsManager.swift`
+### Unchanged: `Sources/CtrlBHelperCore/StatisticsManager.swift`
 
-변경 없음. `recordRemap()`은 새 로직에서도 호출되나, **keyDown에서만 호출**한다 (keyUp에서 중복 집계 방지).
+No changes. `recordRemap()` is called from the new logic on keyDown only (not keyUp, to avoid double-counting).
 
-### 유지: `Sources/ctrl_b_helper/StatusBarController.swift`
+### Unchanged: `Sources/ctrl_b_helper/StatusBarController.swift`
 
-변경 없음.
+No changes.
 
-## 알려진 리스크
+## Known Risks
 
-### 합성 이벤트도 IME에 소비될 가능성
+### Synthetic event may still be consumed by IME
 
-한글 IME가 여전히 활성 상태이므로, 합성 이벤트가 `interpretKeyEvents:`를 통해 처리될 때 IME가 다시 소비할 수 있다. 다만:
-- 합성 이벤트는 `CGEventSource(stateID: .hidSystemState)`로 생성되어 IME composition 상태와 무관
-- cmd-eikana(일본어 키보드 도구)가 동일한 방식으로 성공적으로 동작 중
-- 실패 시 폴백 2번(명시적 제어문자 설정)으로 대응
+The Korean IME is still active when the synthetic event is posted. It could consume the event again at `interpretKeyEvents:`. However:
+- Synthetic events from `CGEventSource(stateID: .hidSystemState)` are independent of IME composition state
+- cmd-eikana (Japanese keyboard tool) uses the same approach and works correctly
+- If this fails, fallback tier 2 (explicit Unicode string) is available
 
-### 다른 이벤트 탭과의 상호작용
+### Interaction with other event tap apps
 
-`.cghidEventTap`에 post하면 Karabiner-Elements 등 다른 이벤트 탭 앱이 합성 이벤트를 가로챌 수 있다. sentinel 값은 우리 앱에서만 인식하므로 다른 앱에서는 일반 키 이벤트로 처리됨.
+Posting to `.cghidEventTap` means apps like Karabiner-Elements may intercept the synthetic event. The sentinel value is only recognized by ctrl-b; other apps treat the event as a normal keypress.
 
-### 한글 입력 소스 감지 누락 가능성
+### IME detection coverage gaps
 
-language/ID 2단계 감지로도 커버되지 않는 입력기가 있을 수 있다. 개발 중 디버그 로깅으로 누락 사례를 수집하고, 발견 시 감지 로직에 추가한다.
+The two-step detection may still miss some third-party IMEs. Collect missed cases via debug logging during development and add them to the detection logic when found.
 
-## 테스트 계획
+## Test Plan
 
-### 빌드 및 유닛 테스트
+### Build and unit tests
 
-- `swift build -c release` 성공
-- `swift test` — 47개 테스트 통과 (Core 로직 변경 없음)
+- `swift build -c release` succeeds
+- `swift test` — all tests pass (Core logic unchanged)
 
-### 수동 테스트 — 핵심 동작
+### Manual tests — core behavior
 
-각 항목은 **PASS/FAIL로 판정**한다. 하나라도 FAIL이면 릴리스하지 않는다.
+Each item is judged **PASS/FAIL**. Any FAIL blocks release.
 
-| # | 환경 | 조작 | 기대 결과 | PASS 기준 |
-|---|------|------|-----------|-----------|
-| 1 | Ghostty + tmux + 한글 2벌식 | Ctrl+b | tmux prefix 모드 진입 | 하단 status bar 색상 변경 또는 prefix 후속키 동작 |
-| 2 | Terminal.app + tmux + 한글 2벌식 | Ctrl+b | tmux prefix 모드 진입 | 동일 |
-| 3 | Ghostty + tmux + 한글 2벌식 | Ctrl+A (tmux prefix가 Ctrl+A인 경우) 또는 Ctrl+C | 해당 단축키 동작 | 프로세스 종료 등 정상 반응 |
-| 4 | Ghostty + tmux + 영문 ABC | Ctrl+b | tmux prefix 모드 진입 | 기존과 동일하게 동작 (회귀 없음) |
-| 5 | Ghostty + vim + 한글 2벌식 | Ctrl+b (page up) | 페이지 위로 이동 | 화면 스크롤 확인 |
+| # | Environment | Input | Expected | PASS Criteria |
+|---|-------------|-------|----------|---------------|
+| 1 | Ghostty + tmux + Korean 2-Set | Ctrl+b | tmux enters prefix mode | Status bar color changes or follow-up key works |
+| 2 | Terminal.app + tmux + Korean 2-Set | Ctrl+b | tmux enters prefix mode | Same |
+| 3 | Ghostty + tmux + Korean 2-Set | Ctrl+A or Ctrl+C | Shortcut works | Process exits or expected behavior |
+| 4 | Ghostty + tmux + English ABC | Ctrl+b | tmux enters prefix mode | No regression from original behavior |
+| 5 | Ghostty + vim + Korean 2-Set | Ctrl+b (page up) | Page scrolls up | Screen scrolls up |
 
-### 수동 테스트 — 비대상 키 (간섭 없음 확인)
+### Manual tests — non-target keys (no interference)
 
-| # | 환경 | 조작 | 기대 결과 |
-|---|------|------|-----------|
-| 6 | 한글 2벌식 | Ctrl+Space | 입력 소스 전환 정상 동작 |
-| 7 | 한글 2벌식 | Ctrl+화살표 | 커서 단어 단위 이동 (앱에 따라 다름) |
-| 8 | 영문 ABC | Ctrl+b | 동작 변화 없음 (앱이 이벤트를 재작성하지 않음) |
+| # | Environment | Input | Expected |
+|---|-------------|-------|----------|
+| 6 | Korean 2-Set | Ctrl+Space | Input source switches normally |
+| 7 | Korean 2-Set | Ctrl+arrow | Cursor moves word by word (app-dependent) |
+| 8 | English ABC | Ctrl+b | No change in behavior (app does not rewrite event) |
 
-### 수동 테스트 — 엣지 케이스
+### Manual tests — edge cases
 
-| # | 조작 | 기대 결과 |
-|---|------|-----------|
-| 9 | 한글 + Ctrl+Shift+키 | modifier 보존, 해당 조합 동작 |
-| 10 | 한글 + Ctrl+b 길게 누르기 (autorepeat) | 반복 이벤트 정상 처리, 앱 행이나 크래시 없음 |
-| 11 | 한글 + Ctrl+b 연타 (빠르게) | 모든 이벤트 처리, 누락 없음 |
+| # | Input | Expected |
+|---|-------|----------|
+| 9 | Korean + Ctrl+Shift+key | Modifier preserved; combination works |
+| 10 | Korean + Ctrl+b held (autorepeat) | Repeated events handled correctly; no hang or crash |
+| 11 | Korean + Ctrl+b rapid tapping | All events processed; no dropped events |
 
-### 수동 테스트 — 통계
+### Manual tests — statistics
 
-| # | 조작 | 기대 결과 |
-|---|------|-----------|
-| 12 | 한글 + Ctrl+b 3회 | 메뉴바 > 오늘 카운트 정확히 3 증가 (6이 아닌 3 — keyDown만 집계) |
-| 13 | 영문 + Ctrl+b 3회 | 카운트 변화 없음 (영문에서는 재작성 안 함) |
+| # | Input | Expected |
+|---|-------|----------|
+| 12 | Korean + Ctrl+b × 3 | Menu bar "today" count increases by exactly 3 (not 6 — keyDown only) |
+| 13 | English + Ctrl+b × 3 | Count unchanged (no rewriting under English layout) |
 
-### 디버그 로깅
+### Debug logging
 
-개발 중 `NSLog`로 다음을 출력:
-- 재작성 발생 시: keyCode, 원본 flags, post 위치
-- `isKoreanInputSourceActive()`가 false 반환 시: 현재 input source ID, localizedName, language 배열 (감지 누락 조기 발견 — localizedName이 있으면 누락 입력기 식별이 더 쉬움)
+During development, log via `NSLog`:
+- On rewrite: keyCode, original flags, post location
+- When `isKoreanInputSourceActive()` returns false: current input source ID, localizedName, language array (to detect missed IMEs early — localizedName helps identify the IME)
