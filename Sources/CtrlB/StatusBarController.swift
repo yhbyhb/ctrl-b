@@ -6,6 +6,8 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
     private let eventTap: EventTapControlling
     private let stats: StatisticsManager
     private let aboutPanel: AboutPanelController
+    private var lastSecureInputActive = false
+    private var secureInputPollTimer: Timer?
 
     init(eventTap: EventTapControlling, stats: StatisticsManager) {
         self.eventTap = eventTap
@@ -20,7 +22,9 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
 
     func start() {
         setupStatusItem()
+        lastSecureInputActive = isSecureKeyboardEntryActive()
         applyStatusAppearance(for: eventTap.state)
+        startSecureInputMonitoring()
     }
 
     // MARK: - Setup
@@ -36,6 +40,7 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
 
     func menuWillOpen(_ menu: NSMenu) {
         refreshStateIfNeeded()
+        checkSecureInputChange()
         buildMenu(menu)
     }
 
@@ -52,6 +57,9 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
 
         let menuModel = StatusMenuModelBuilder.build(for: eventTap.state)
         menu.addItem(disabled(localized(menuModel.statusTitleKey)))
+        if lastSecureInputActive {
+            menu.addItem(disabled(localized("menu.secure_input.warning")))
+        }
         for item in menuModel.primaryItems {
             menu.addItem(action(localized(item.titleKey), selector(for: item.action)))
         }
@@ -135,8 +143,28 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
 
     private func applyStatusAppearance(for state: EventTapState) {
         let localized = { (key: String) in NSLocalizedString(key, bundle: .module, comment: "") }
-        statusItem.button?.title = StatusMenuModelBuilder.statusItemTitle(for: state)
-        statusItem.button?.toolTip = localized(StatusMenuModelBuilder.tooltipKey(for: state))
+        let secure = lastSecureInputActive
+        statusItem.button?.title = StatusMenuModelBuilder.statusItemTitle(for: state, secureInputActive: secure)
+        statusItem.button?.toolTip = localized(StatusMenuModelBuilder.tooltipKey(for: state, secureInputActive: secure))
+    }
+
+    private func startSecureInputMonitoring() {
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(checkSecureInputChange),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
+        secureInputPollTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            self?.checkSecureInputChange()
+        }
+    }
+
+    @objc private func checkSecureInputChange() {
+        let active = isSecureKeyboardEntryActive()
+        guard active != lastSecureInputActive else { return }
+        lastSecureInputActive = active
+        applyStatusAppearance(for: eventTap.state)
     }
 
     private func refreshStateIfNeeded() {

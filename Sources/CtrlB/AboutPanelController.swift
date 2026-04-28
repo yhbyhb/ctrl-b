@@ -32,6 +32,10 @@ final class AboutPanelController: NSObject {
         result.append(keycapLine())
         result.append(blankLine())
         result.append(currentInputSourceLine())
+        if let secure = secureInputLine() {
+            result.append(blankLine())
+            result.append(secure)
+        }
         result.append(blankLine())
         result.append(statsLine())
         result.append(blankLine())
@@ -65,6 +69,17 @@ final class AboutPanelController: NSObject {
             attributes: [
                 .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
                 .foregroundColor: NSColor.labelColor
+            ]
+        )
+    }
+
+    private func secureInputLine() -> NSAttributedString? {
+        guard isSecureKeyboardEntryActive() else { return nil }
+        return NSAttributedString(
+            string: "🔒 Secure Keyboard Entry is active — ctrl-b cannot intercept",
+            attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                .foregroundColor: NSColor.systemOrange
             ]
         )
     }

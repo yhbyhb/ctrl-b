@@ -47,4 +47,49 @@ final class StatusMenuModelTests: XCTestCase {
         XCTAssertEqual(StatusMenuModelBuilder.statusItemTitle(for: .paused), "⌃b⏸")
         XCTAssertEqual(StatusMenuModelBuilder.tooltipKey(for: .paused), "tooltip.state.paused")
     }
+
+    func test_enabled_withSecureInput_usesWarningIconTitle() {
+        XCTAssertEqual(
+            StatusMenuModelBuilder.statusItemTitle(for: .enabled, secureInputActive: true),
+            "⌃b!"
+        )
+        XCTAssertEqual(
+            StatusMenuModelBuilder.tooltipKey(for: .enabled, secureInputActive: true),
+            "tooltip.state.secure_input_active"
+        )
+    }
+
+    func test_enabled_withoutSecureInput_usesPlainTitle() {
+        XCTAssertEqual(
+            StatusMenuModelBuilder.statusItemTitle(for: .enabled, secureInputActive: false),
+            "⌃b"
+        )
+        XCTAssertEqual(
+            StatusMenuModelBuilder.tooltipKey(for: .enabled, secureInputActive: false),
+            "tooltip.state.enabled"
+        )
+    }
+
+    func test_secureInput_doesNotOverride_otherStates() {
+        XCTAssertEqual(
+            StatusMenuModelBuilder.statusItemTitle(for: .paused, secureInputActive: true),
+            "⌃b⏸"
+        )
+        XCTAssertEqual(
+            StatusMenuModelBuilder.statusItemTitle(for: .permissionRequired, secureInputActive: true),
+            "⌃b!"
+        )
+        XCTAssertEqual(
+            StatusMenuModelBuilder.tooltipKey(for: .permissionRequired, secureInputActive: true),
+            "tooltip.state.permission_required"
+        )
+        XCTAssertEqual(
+            StatusMenuModelBuilder.statusItemTitle(for: .unavailable, secureInputActive: true),
+            "⌃b!"
+        )
+        XCTAssertEqual(
+            StatusMenuModelBuilder.tooltipKey(for: .unavailable, secureInputActive: true),
+            "tooltip.state.unavailable"
+        )
+    }
 }

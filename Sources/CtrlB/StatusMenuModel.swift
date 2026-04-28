@@ -76,12 +76,12 @@ enum StatusMenuModelBuilder {
         }
     }
 
-    static func tooltipKey(for state: EventTapState) -> String {
+    static func tooltipKey(for state: EventTapState, secureInputActive: Bool = false) -> String {
         switch state {
         case .permissionRequired:
             return "tooltip.state.permission_required"
         case .enabled:
-            return "tooltip.state.enabled"
+            return secureInputActive ? "tooltip.state.secure_input_active" : "tooltip.state.enabled"
         case .paused:
             return "tooltip.state.paused"
         case .unavailable:
@@ -89,12 +89,12 @@ enum StatusMenuModelBuilder {
         }
     }
 
-    static func statusItemTitle(for state: EventTapState) -> String {
+    static func statusItemTitle(for state: EventTapState, secureInputActive: Bool = false) -> String {
         switch state {
         case .permissionRequired, .unavailable:
             return "⌃b!"
         case .enabled:
-            return "⌃b"
+            return secureInputActive ? "⌃b!" : "⌃b"
         case .paused:
             return "⌃b⏸"
         }
