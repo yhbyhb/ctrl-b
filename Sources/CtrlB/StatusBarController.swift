@@ -81,7 +81,7 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
 
         let menuModel = StatusMenuModelBuilder.build(for: eventTap.state)
         menu.addItem(disabled(localized(menuModel.statusTitleKey)))
-        if lastSecureInputActive {
+        if eventTap.state == .enabled, lastSecureInputActive {
             menu.addItem(disabled(localized("menu.secure_input.warning")))
         }
         for item in menuModel.primaryItems {
