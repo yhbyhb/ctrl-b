@@ -10,6 +10,7 @@
 "menu.action.resume" = "继续";
 "menu.action.open_accessibility_settings" = "打开辅助功能设置…";
 "menu.action.check_again" = "再次检查";
+"menu.secure_input.warning" = "⚠️ 安全键盘输入正在阻止 ctrl-b";
 "menu.today" = "今天: %d次 · 节省%@";
 "menu.total" = "累计: %d次 · 节省%@";
 "menu.reset" = "重置统计";
@@ -21,6 +22,7 @@
 "tooltip.state.paused" = "ctrl-b 当前已暂停。";
 "tooltip.state.permission_required" = "ctrl-b 需要辅助功能权限。";
 "tooltip.state.unavailable" = "ctrl-b 无法启动键盘重映射。";
+"tooltip.state.secure_input_active" = "安全键盘输入正在阻止 ctrl-b。";
 
 /* Accessibility Alert */
 "alert.accessibility.title" = "需要辅助功能权限";

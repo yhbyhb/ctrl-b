@@ -10,6 +10,7 @@
 "menu.action.resume" = "Resume";
 "menu.action.open_accessibility_settings" = "Open Accessibility Settings…";
 "menu.action.check_again" = "Check Again";
+"menu.secure_input.warning" = "⚠️ Secure Keyboard Entry is blocking ctrl-b";
 "menu.today" = "Today: %d times · %@ saved";
 "menu.total" = "Total: %d times · %@ saved";
 "menu.reset" = "Reset Statistics";
@@ -21,6 +22,7 @@
 "tooltip.state.paused" = "ctrl-b is paused.";
 "tooltip.state.permission_required" = "ctrl-b needs Accessibility permission.";
 "tooltip.state.unavailable" = "ctrl-b could not start keyboard remapping.";
+"tooltip.state.secure_input_active" = "Secure Keyboard Entry is blocking ctrl-b.";
 
 /* Accessibility Alert */
 "alert.accessibility.title" = "Accessibility Permission Required";
