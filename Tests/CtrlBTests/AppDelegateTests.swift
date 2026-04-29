@@ -178,13 +178,15 @@ final class AppDelegateTests: XCTestCase {
         let observer = MockAccessibilityPermissionObserver()
         let repeatingFactory = MockRepeatingTaskFactory()
         let eventTap = MockEventTapController(checkAgainResults: [.permissionRequired])
+        let statusBar = MockStatusBarController()
 
         let sut = makeSUT(
             permission: permission,
             observer: observer,
             repeatingFactory: repeatingFactory,
             activationPolicySetter: { _ in },
-            eventTap: eventTap
+            eventTap: eventTap,
+            statusBar: statusBar
         )
         sut.applicationDidFinishLaunching(Notification(name: Notification.Name("test")))
 
@@ -193,6 +195,7 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertEqual(observer.stopObservingCallCount, 1)
         XCTAssertEqual(repeatingFactory.createdTasks.first?.cancelCallCount, 1)
         XCTAssertEqual(eventTap.shutdownCallCount, 1)
+        XCTAssertEqual(statusBar.stopCallCount, 1)
     }
 
     private func makeSUT(
@@ -200,7 +203,8 @@ final class AppDelegateTests: XCTestCase {
         observer: MockAccessibilityPermissionObserver,
         repeatingFactory: MockRepeatingTaskFactory,
         activationPolicySetter: @escaping (NSApplication.ActivationPolicy) -> Void,
-        eventTap: MockEventTapController
+        eventTap: MockEventTapController,
+        statusBar: MockStatusBarController = MockStatusBarController()
     ) -> AppDelegate {
         AppDelegate(
             permissionController: permission,
@@ -209,7 +213,7 @@ final class AppDelegateTests: XCTestCase {
             activationPolicySetter: activationPolicySetter,
             statisticsFactory: { StatisticsManager(defaults: makeAppDelegateTestDefaults()) },
             eventTapFactory: { _, _ in eventTap },
-            statusBarFactory: { _, _, _, _ in MockStatusBarController() }
+            statusBarFactory: { _, _, _, _ in statusBar }
         )
     }
 }
