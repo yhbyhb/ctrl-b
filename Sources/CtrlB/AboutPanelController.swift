@@ -10,11 +10,14 @@ import CtrlBCore
 final class AboutPanelController: NSObject {
     private let stats: StatisticsManager
     private let currentInputSource: () -> InputSourceDisplay
+    private let secureInputMonitor: SecureInputMonitoring
 
     init(stats: StatisticsManager,
-         currentInputSource: @escaping () -> InputSourceDisplay) {
+         currentInputSource: @escaping () -> InputSourceDisplay,
+         secureInputMonitor: SecureInputMonitoring) {
         self.stats = stats
         self.currentInputSource = currentInputSource
+        self.secureInputMonitor = secureInputMonitor
         super.init()
     }
 
@@ -74,7 +77,7 @@ final class AboutPanelController: NSObject {
     }
 
     private func secureInputLine() -> NSAttributedString? {
-        guard isSecureKeyboardEntryActive() else { return nil }
+        guard secureInputMonitor.isActive() else { return nil }
         return NSAttributedString(
             string: "🔒 Secure Keyboard Entry is active — ctrl-b cannot intercept",
             attributes: [

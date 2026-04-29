@@ -1,30 +1,55 @@
 import Cocoa
 import CtrlBCore
+import os
+
+private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "SecureInput")
 
 final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling {
     private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let eventTap: EventTapControlling
     private let stats: StatisticsManager
     private let aboutPanel: AboutPanelController
+    private let secureInputMonitor: SecureInputMonitoring
+    private let repeatingTaskFactory: RepeatingTaskFactory
     private var lastSecureInputActive = false
-    private var secureInputPollTimer: Timer?
+    private var pollingTask: RepeatingTask?
 
-    init(eventTap: EventTapControlling, stats: StatisticsManager) {
+    init(eventTap: EventTapControlling,
+         stats: StatisticsManager,
+         secureInputMonitor: SecureInputMonitoring,
+         repeatingTaskFactory: @escaping RepeatingTaskFactory) {
         self.eventTap = eventTap
         self.stats = stats
-        self.aboutPanel = AboutPanelController(stats: stats,
-                                                currentInputSource: currentInputSourceDisplay)
+        self.secureInputMonitor = secureInputMonitor
+        self.repeatingTaskFactory = repeatingTaskFactory
+        self.aboutPanel = AboutPanelController(
+            stats: stats,
+            currentInputSource: currentInputSourceDisplay,
+            secureInputMonitor: secureInputMonitor
+        )
         super.init()
         eventTap.onStateChange = { [weak self] state in
             self?.applyStatusAppearance(for: state)
         }
     }
 
+    deinit { stop() }
+
     func start() {
         setupStatusItem()
-        lastSecureInputActive = isSecureKeyboardEntryActive()
+        lastSecureInputActive = secureInputMonitor.isActive()
         applyStatusAppearance(for: eventTap.state)
         startSecureInputMonitoring()
+    }
+
+    func stop() {
+        pollingTask?.cancel()
+        pollingTask = nil
+        NSWorkspace.shared.notificationCenter.removeObserver(
+            self,
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
     }
 
     // MARK: - Setup
@@ -51,7 +76,6 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
 
         let localized = { (key: String) in NSLocalizedString(key, bundle: .module, comment: "") }
 
-        // Header
         menu.addItem(disabled(localized("menu.header")))
         menu.addItem(.separator())
 
@@ -65,56 +89,33 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
         }
         menu.addItem(.separator())
 
-        // Today stats
         let todayText = String(format: localized("menu.today"), stats.todayRemapCount, formatTime(stats.todayTimeSavedSeconds))
         menu.addItem(disabled(todayText))
-        // Cumulative stats
         let totalText = String(format: localized("menu.total"), stats.remapCount, formatTime(stats.timeSavedSeconds))
         menu.addItem(disabled(totalText))
         menu.addItem(.separator())
 
-        // Reset
         menu.addItem(action(localized("menu.reset"), #selector(resetStats)))
         menu.addItem(.separator())
 
-        // Launch at login
         let loginTitle = LaunchAtLoginManager.isEnabled ? localized("menu.login.enabled") : localized("menu.login.disabled")
         menu.addItem(action(loginTitle, #selector(toggleLaunchAtLogin)))
         menu.addItem(.separator())
 
-        // About
         menu.addItem(action(localized("menu.about"), #selector(showAbout)))
 
-        // Quit
         let quit = NSMenuItem(title: localized("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
     }
 
     // MARK: - Actions
 
-    @objc private func toggleEnabled() {
-        eventTap.toggle()
-    }
-
-    @objc private func checkAgain() {
-        eventTap.checkAgain()
-    }
-
-    @objc private func openAccessibilitySettings() {
-        eventTap.openAccessibilitySettings()
-    }
-
-    @objc private func resetStats() {
-        stats.reset()
-    }
-
-    @objc private func toggleLaunchAtLogin() {
-        LaunchAtLoginManager.toggle()
-    }
-
-    @objc private func showAbout() {
-        aboutPanel.show(nil)
-    }
+    @objc private func toggleEnabled() { eventTap.toggle() }
+    @objc private func checkAgain() { eventTap.checkAgain() }
+    @objc private func openAccessibilitySettings() { eventTap.openAccessibilitySettings() }
+    @objc private func resetStats() { stats.reset() }
+    @objc private func toggleLaunchAtLogin() { LaunchAtLoginManager.toggle() }
+    @objc private func showAbout() { aboutPanel.show(nil) }
 
     // MARK: - Helpers
 
@@ -132,20 +133,34 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
 
     private func selector(for action: StatusMenuPrimaryAction) -> Selector {
         switch action {
-        case .pause, .resume:
-            return #selector(toggleEnabled)
-        case .openAccessibilitySettings:
-            return #selector(openAccessibilitySettings)
-        case .checkAgain:
-            return #selector(checkAgain)
+        case .pause, .resume: return #selector(toggleEnabled)
+        case .openAccessibilitySettings: return #selector(openAccessibilitySettings)
+        case .checkAgain: return #selector(checkAgain)
         }
     }
 
     private func applyStatusAppearance(for state: EventTapState) {
         let localized = { (key: String) in NSLocalizedString(key, bundle: .module, comment: "") }
-        let secure = lastSecureInputActive
-        statusItem.button?.title = StatusMenuModelBuilder.statusItemTitle(for: state, secureInputActive: secure)
-        statusItem.button?.toolTip = localized(StatusMenuModelBuilder.tooltipKey(for: state, secureInputActive: secure))
+        let appearance = StatusMenuModelBuilder.statusItemAppearance(
+            for: state,
+            secureInputActive: lastSecureInputActive
+        )
+        guard let button = statusItem.button else { return }
+        button.title = appearance.title
+        button.toolTip = localized(
+            StatusMenuModelBuilder.tooltipKey(for: state, secureInputActive: lastSecureInputActive)
+        )
+        if let symbolName = appearance.symbolName {
+            let image = NSImage(
+                systemSymbolName: symbolName,
+                accessibilityDescription: localized("tooltip.state.secure_input_active")
+            )
+            image?.isTemplate = true
+            button.image = image
+            button.imagePosition = .imageRight
+        } else {
+            button.image = nil
+        }
     }
 
     private func startSecureInputMonitoring() {
@@ -155,15 +170,20 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
             name: NSWorkspace.didActivateApplicationNotification,
             object: nil
         )
-        secureInputPollTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+        pollingTask = repeatingTaskFactory(PermissionPollingPolicy.passiveInterval) { [weak self] in
             self?.checkSecureInputChange()
         }
     }
 
     @objc private func checkSecureInputChange() {
-        let active = isSecureKeyboardEntryActive()
+        let active = secureInputMonitor.isActive()
         guard active != lastSecureInputActive else { return }
         lastSecureInputActive = active
+        if active {
+            log.warning("Secure Keyboard Entry became active — ctrl-b cannot intercept")
+        } else {
+            log.info("Secure Keyboard Entry deactivated")
+        }
         applyStatusAppearance(for: eventTap.state)
     }
 
@@ -172,9 +192,8 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
     }
 
     #if DEBUG
-    func debugRefreshStateIfNeeded() {
-        refreshStateIfNeeded()
-    }
+    var debugSecureInputActive: Bool { lastSecureInputActive }
+    func debugRefreshStateIfNeeded() { refreshStateIfNeeded() }
     #endif
 
     private func formatTime(_ seconds: Double) -> String {

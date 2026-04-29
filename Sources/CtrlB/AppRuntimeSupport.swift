@@ -73,9 +73,15 @@ typealias RepeatingTaskFactory = (_ interval: TimeInterval, _ handler: @escaping
 typealias EventTapFactory = (_ statisticsManager: StatisticsManager, _ permissionController: AccessibilityPermissionControlling) -> EventTapControlling
 protocol StatusBarControlling: AnyObject {
     func start()
+    func stop()
 }
 
-typealias StatusBarFactory = (_ eventTap: EventTapControlling, _ statisticsManager: StatisticsManager) -> StatusBarControlling
+typealias StatusBarFactory = (
+    _ eventTap: EventTapControlling,
+    _ statisticsManager: StatisticsManager,
+    _ secureInputMonitor: SecureInputMonitoring,
+    _ repeatingTaskFactory: @escaping RepeatingTaskFactory
+) -> StatusBarControlling
 
 enum PermissionPollingPolicy {
     static let activeInterval: TimeInterval = 1.0

@@ -37,6 +37,11 @@ struct StatusMenuModel: Equatable {
     let primaryItems: [StatusMenuPrimaryItem]
 }
 
+struct StatusItemAppearance: Equatable {
+    let title: String
+    let symbolName: String?
+}
+
 enum StatusMenuModelBuilder {
     static func build(for state: EventTapState) -> StatusMenuModel {
         switch state {
@@ -89,14 +94,20 @@ enum StatusMenuModelBuilder {
         }
     }
 
-    static func statusItemTitle(for state: EventTapState, secureInputActive: Bool = false) -> String {
+    static func statusItemAppearance(
+        for state: EventTapState,
+        secureInputActive: Bool = false
+    ) -> StatusItemAppearance {
         switch state {
         case .permissionRequired, .unavailable:
-            return "⌃b!"
+            return StatusItemAppearance(title: "⌃b!", symbolName: nil)
         case .enabled:
-            return secureInputActive ? "⌃b!" : "⌃b"
+            return StatusItemAppearance(
+                title: "⌃b",
+                symbolName: secureInputActive ? "lock.fill" : nil
+            )
         case .paused:
-            return "⌃b⏸"
+            return StatusItemAppearance(title: "⌃b⏸", symbolName: nil)
         }
     }
 }

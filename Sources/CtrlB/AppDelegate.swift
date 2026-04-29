@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let statisticsFactory: () -> StatisticsManager
     private let eventTapFactory: EventTapFactory
     private let statusBarFactory: StatusBarFactory
+    private let secureInputMonitorFactory: SecureInputMonitorFactory
     private var isMonitoringAccessibilityPermission = false
     private var recoveryWorkItem: DispatchWorkItem?
     private var currentPollingInterval: TimeInterval?
@@ -32,9 +33,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         eventTapFactory: @escaping EventTapFactory = { stats, permissionController in
             EventTapManager(statisticsManager: stats, permissionController: permissionController)
         },
-        statusBarFactory: @escaping StatusBarFactory = { eventTap, stats in
-            return StatusBarController(eventTap: eventTap, stats: stats)
-        }
+        statusBarFactory: @escaping StatusBarFactory = { eventTap, stats, secureInputMonitor, repeatingTaskFactory in
+            return StatusBarController(
+                eventTap: eventTap,
+                stats: stats,
+                secureInputMonitor: secureInputMonitor,
+                repeatingTaskFactory: repeatingTaskFactory
+            )
+        },
+        secureInputMonitorFactory: @escaping SecureInputMonitorFactory = { SecureInputMonitor() }
     ) {
         self.permissionController = permissionController
         self.permissionObserver = permissionObserver
@@ -43,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.statisticsFactory = statisticsFactory
         self.eventTapFactory = eventTapFactory
         self.statusBarFactory = statusBarFactory
+        self.secureInputMonitorFactory = secureInputMonitorFactory
         super.init()
     }
 
@@ -52,7 +60,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let stats = statisticsFactory()
         let eventTap = eventTapFactory(stats, permissionController)
-        statusBarController = statusBarFactory(eventTap, stats)
+        let secureInputMonitor = secureInputMonitorFactory()
+        statusBarController = statusBarFactory(eventTap, stats, secureInputMonitor, repeatingTaskFactory)
         statusBarController?.start()
         eventTapManager = eventTap
         startPermissionMonitoring()
@@ -70,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         stopPermissionMonitoring()
+        statusBarController?.stop()
         eventTapManager?.shutdown()
     }
 

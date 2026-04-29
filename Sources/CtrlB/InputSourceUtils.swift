@@ -4,13 +4,6 @@ import os
 
 private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "InputSource")
 
-/// Reports whether macOS Secure Keyboard Entry is active system-wide.
-/// When on, no external CGEventTap can observe key input — ctrl-b cannot
-/// remap inside whichever app turned it on (Terminal, Ghostty, iTerm2, etc.).
-func isSecureKeyboardEntryActive() -> Bool {
-    IsSecureEventInputEnabled()
-}
-
 /// Determines if the currently active keyboard input source is an IME.
 /// kTISTypeKeyboardInputMode means IME → remapping needed
 /// kTISTypeKeyboardLayout means simple keymap (ABC, AZERTY, etc.) → no remapping needed
