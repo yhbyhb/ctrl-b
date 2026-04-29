@@ -193,7 +193,6 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
 
     #if DEBUG
     var debugSecureInputActive: Bool { lastSecureInputActive }
-    func debugRefreshStateIfNeeded() { refreshStateIfNeeded() }
     #endif
 
     private func formatTime(_ seconds: Double) -> String {
