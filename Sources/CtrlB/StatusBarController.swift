@@ -170,7 +170,7 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
             name: NSWorkspace.didActivateApplicationNotification,
             object: nil
         )
-        pollingTask = repeatingTaskFactory(PermissionPollingPolicy.passiveInterval) { [weak self] in
+        pollingTask = repeatingTaskFactory(SecureInputPollingPolicy.interval) { [weak self] in
             self?.checkSecureInputChange()
         }
     }

@@ -96,3 +96,10 @@ enum PermissionPollingPolicy {
         }
     }
 }
+
+enum SecureInputPollingPolicy {
+    /// Secure Keyboard Entry exposes no notification API; polling is the only
+    /// option. 1s matches the macOS ecosystem convention (Karabiner, Hammerspoon)
+    /// and is well within the noise floor of menu-bar app overhead.
+    static let interval: TimeInterval = 1.0
+}

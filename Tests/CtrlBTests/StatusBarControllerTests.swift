@@ -49,7 +49,7 @@ final class StatusBarControllerTests: XCTestCase {
         sut.start()
 
         XCTAssertEqual(monitor.isActiveCallCount, 1)
-        XCTAssertEqual(factory.lastInterval, PermissionPollingPolicy.passiveInterval)
+        XCTAssertEqual(factory.lastInterval, SecureInputPollingPolicy.interval)
         XCTAssertNotNil(factory.lastHandler)
         XCTAssertFalse(sut.debugSecureInputActive)
     }
