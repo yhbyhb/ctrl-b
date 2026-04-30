@@ -8,9 +8,9 @@ A macOS menu bar utility that fixes Ctrl+key shortcuts not working when a CJK in
 
 ---
 
-한글 IME 사용 중 터미널에서 `Ctrl+b` 가 안 될 때 고쳐주는 macOS 앱입니다. [中文说明](README.zh.md)  
+한글 IME 사용 중 터미널에서 `Ctrl+b` 가 안 될 때 고쳐주는 macOS 앱입니다. [한국어 설명](README.ko.md)  
 中文输入法激活时，终端里 `Ctrl+b` 快捷键失效？这个 macOS 应用帮你修复。[中文说明](README.zh.md)  
-日本語IMEがオンのとき `Ctrl+b` がターミナルで効かない問題を解決するmacOSアプリです。
+日本語IMEがオンのとき `Ctrl+b` がターミナルで効かない問題を解決するmacOSアプリです。[日本語説明](README.ja.md)
 
 ---
 
