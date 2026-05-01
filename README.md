@@ -111,6 +111,10 @@ make setup               # Set up git hooks (run once after cloning)
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
+## Support
+
+ctrl-b is free and developed in spare time. If it's been useful to you, sponsoring helps keep it maintained: [GitHub Sponsors](https://github.com/sponsors/yhbyhb) · [Ko-fi](https://ko-fi.com/yhbyhb)
+
 ## License
 
 MIT — see [LICENSE](LICENSE)
