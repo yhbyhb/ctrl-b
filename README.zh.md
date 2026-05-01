@@ -105,6 +105,10 @@ make setup               # 配置 git hooks（克隆后运行一次）
 
 贡献指南请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+## 支持
+
+ctrl-b 免费提供，作者利用业余时间开发维护。如果对您有帮助，欢迎赞助以支持持续维护：[GitHub Sponsors](https://github.com/sponsors/yhbyhb) · [Ko-fi](https://ko-fi.com/yhbyhb)
+
 ## 许可证
 
 MIT — 详见 [LICENSE](LICENSE)

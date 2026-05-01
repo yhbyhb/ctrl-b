@@ -105,6 +105,10 @@ make setup               # gitフックの設定（クローン後に一度だ�
 
 コントリビューションのガイドラインは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
 
+## サポート
+
+ctrl-bは無料で、空き時間に開発しています。お役に立てたなら、スポンサーとしてメンテナンスを応援していただけると嬉しいです: [GitHub Sponsors](https://github.com/sponsors/yhbyhb) · [Ko-fi](https://ko-fi.com/yhbyhb)
+
 ## ライセンス
 
 MIT — [LICENSE](LICENSE) を参照
