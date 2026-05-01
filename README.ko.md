@@ -105,6 +105,10 @@ make setup               # git hook 설정 (클론 후 최초 1회)
 
 기여 방법은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
 
+## 후원
+
+ctrl-b는 무료이며 여가 시간에 개발하고 있습니다. 도움이 되셨다면 후원으로 유지보수를 응원해 주세요: [GitHub Sponsors](https://github.com/sponsors/yhbyhb) · [Ko-fi](https://ko-fi.com/yhbyhb)
+
 ## 라이선스
 
 MIT — [LICENSE](LICENSE) 참고
