@@ -60,7 +60,8 @@ final class UpdateChecker: UpdateChecking {
                 DispatchQueue.main.async { self.isChecking = false }
                 return
             }
-            let latest = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+            let raw = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+            let latest = raw.components(separatedBy: "-").first ?? raw
             let newResult: UpdateResult = isNewerVersion(latest, than: self.currentVersion)
                 ? .available(latestVersion: latest)
                 : .upToDate

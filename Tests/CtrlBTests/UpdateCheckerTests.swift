@@ -80,6 +80,24 @@ final class UpdateCheckerTests: XCTestCase {
         waitForExpectations(timeout: 2)
     }
 
+    func test_checkInBackground_withPreReleaseTag_stripsPreReleaseSuffix() {
+        let expectation = expectation(description: "result updated")
+        let session = makeSession(tagName: "v1.9.0-beta.1")
+        let sut = UpdateChecker(session: session, currentVersion: "1.1.0")
+
+        sut.checkInBackground()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if case .available(let version) = sut.result {
+                XCTAssertEqual(version, "1.9.0")
+                expectation.fulfill()
+            } else {
+                XCTFail("Expected .available(\"1.9.0\"), got \(sut.result)")
+            }
+        }
+        waitForExpectations(timeout: 2)
+    }
+
     func test_checkInBackground_concurrentCall_ignored() {
         let session = makeSession(tagName: "v1.9.0")
         let sut = UpdateChecker(session: session, currentVersion: "1.1.0")
