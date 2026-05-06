@@ -10,6 +10,7 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
     private let stats: StatisticsManager
     private let aboutPanel: AboutPanelController
     private let secureInputMonitor: SecureInputMonitoring
+    private let updateChecker: UpdateChecking
     private let repeatingTaskFactory: RepeatingTaskFactory
     private var lastSecureInputActive = false
     private var pollingTask: RepeatingTask?
@@ -17,10 +18,12 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
     init(eventTap: EventTapControlling,
          stats: StatisticsManager,
          secureInputMonitor: SecureInputMonitoring,
+         updateChecker: UpdateChecking,
          repeatingTaskFactory: @escaping RepeatingTaskFactory) {
         self.eventTap = eventTap
         self.stats = stats
         self.secureInputMonitor = secureInputMonitor
+        self.updateChecker = updateChecker
         self.repeatingTaskFactory = repeatingTaskFactory
         self.aboutPanel = AboutPanelController(
             stats: stats,
@@ -104,6 +107,14 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
 
         menu.addItem(action(localized("menu.about"), #selector(showAbout)))
 
+        let checkForUpdatesTitle: String
+        if case .available(let version) = updateChecker.result {
+            checkForUpdatesTitle = String(format: localized("menu.update_available"), version)
+        } else {
+            checkForUpdatesTitle = localized("menu.check_for_updates")
+        }
+        menu.addItem(action(checkForUpdatesTitle, #selector(openLatestRelease)))
+
         let quit = NSMenuItem(title: localized("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
     }
@@ -116,6 +127,7 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
     @objc private func resetStats() { stats.reset() }
     @objc private func toggleLaunchAtLogin() { LaunchAtLoginManager.toggle() }
     @objc private func showAbout() { aboutPanel.show(nil) }
+    @objc private func openLatestRelease() { NSWorkspace.shared.open(UpdateChecker.releasesURL) }
 
     // MARK: - Helpers
 

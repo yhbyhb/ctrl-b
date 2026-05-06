@@ -167,16 +167,24 @@ private func makeSUT(
         state: .enabled, refreshResult: .enabled
     ),
     secureInputMonitor: SecureInputMonitoring = MockSecureInputMonitor(initialState: false),
+    updateChecker: UpdateChecking = MockUpdateChecker(),
     taskFactory: MockRepeatingTaskFactory = MockRepeatingTaskFactory()
 ) -> StatusBarController {
     StatusBarController(
         eventTap: eventTap,
         stats: StatisticsManager(defaults: makeStatusBarTestDefaults()),
         secureInputMonitor: secureInputMonitor,
+        updateChecker: updateChecker,
         repeatingTaskFactory: taskFactory.make
     )
 }
 
 private func makeStatusBarTestDefaults() -> UserDefaults {
     UserDefaults(suiteName: UUID().uuidString) ?? .standard
+}
+
+private final class MockUpdateChecker: UpdateChecking {
+    var result: UpdateResult = .unknown
+    private(set) var checkInBackgroundCallCount = 0
+    func checkInBackground() { checkInBackgroundCallCount += 1 }
 }

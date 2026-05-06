@@ -71,6 +71,7 @@ final class TimerRepeatingTask: RepeatingTask {
 
 typealias RepeatingTaskFactory = (_ interval: TimeInterval, _ handler: @escaping () -> Void) -> RepeatingTask
 typealias EventTapFactory = (_ statisticsManager: StatisticsManager, _ permissionController: AccessibilityPermissionControlling) -> EventTapControlling
+typealias UpdateCheckerFactory = () -> UpdateChecking
 protocol StatusBarControlling: AnyObject {
     func start()
     func stop()
@@ -80,6 +81,7 @@ typealias StatusBarFactory = (
     _ eventTap: EventTapControlling,
     _ statisticsManager: StatisticsManager,
     _ secureInputMonitor: SecureInputMonitoring,
+    _ updateChecker: UpdateChecking,
     _ repeatingTaskFactory: @escaping RepeatingTaskFactory
 ) -> StatusBarControlling
 
