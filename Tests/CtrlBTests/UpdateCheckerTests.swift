@@ -65,7 +65,7 @@ final class UpdateCheckerTests: XCTestCase {
 
     func test_checkInBackground_withInvalidResponse_keepsUnknown() {
         let expectation = expectation(description: "timeout passes")
-        let session = makeSession(responseData: "not json".data(using: .utf8)!)
+        let session = makeSession(responseData: Data("not json".utf8))
         let sut = UpdateChecker(session: session, currentVersion: "1.1.0")
 
         sut.checkInBackground()
@@ -112,7 +112,7 @@ final class UpdateCheckerTests: XCTestCase {
 // MARK: - Helpers
 
 private func makeSession(tagName: String) -> URLSession {
-    makeSession(responseData: "{\"tag_name\":\"\(tagName)\"}".data(using: .utf8)!)
+    makeSession(responseData: Data("{\"tag_name\":\"\(tagName)\"}".utf8))
 }
 
 private func makeSession(responseData: Data) -> URLSession {
@@ -125,16 +125,18 @@ private func makeSession(responseData: Data) -> URLSession {
 private final class MockURLProtocol: URLProtocol {
     static var responseData: Data = Data()
 
+    // swiftlint:disable:next static_over_final_class
     override class func canInit(with request: URLRequest) -> Bool { true }
+    // swiftlint:disable:next static_over_final_class
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        let response = HTTPURLResponse(
-            url: request.url!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        guard let url = request.url,
+              let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)
+        else {
+            client?.urlProtocolDidFinishLoading(self)
+            return
+        }
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: MockURLProtocol.responseData)
         client?.urlProtocolDidFinishLoading(self)

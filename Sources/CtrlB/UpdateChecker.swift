@@ -16,7 +16,9 @@ protocol UpdateChecking: AnyObject {
 }
 
 final class UpdateChecker: UpdateChecking {
+    // swiftlint:disable:next force_unwrapping
     static let releasesURL = URL(string: "https://github.com/yhbyhb/ctrl-b/releases/latest")!
+    // swiftlint:disable:next force_unwrapping
     private static let apiURL = URL(string: "https://api.github.com/repos/yhbyhb/ctrl-b/releases/latest")!
 
     private(set) var result: UpdateResult = .unknown
