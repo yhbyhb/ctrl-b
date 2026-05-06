@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let eventTapFactory: EventTapFactory
     private let statusBarFactory: StatusBarFactory
     private let secureInputMonitorFactory: SecureInputMonitorFactory
+    private let updateCheckerFactory: UpdateCheckerFactory
     private var isMonitoringAccessibilityPermission = false
     private var recoveryWorkItem: DispatchWorkItem?
     private var currentPollingInterval: TimeInterval?
@@ -33,15 +34,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         eventTapFactory: @escaping EventTapFactory = { stats, permissionController in
             EventTapManager(statisticsManager: stats, permissionController: permissionController)
         },
-        statusBarFactory: @escaping StatusBarFactory = { eventTap, stats, secureInputMonitor, repeatingTaskFactory in
+        statusBarFactory: @escaping StatusBarFactory = { eventTap, stats, secureInputMonitor, updateChecker, repeatingTaskFactory in
             return StatusBarController(
                 eventTap: eventTap,
                 stats: stats,
                 secureInputMonitor: secureInputMonitor,
+                updateChecker: updateChecker,
                 repeatingTaskFactory: repeatingTaskFactory
             )
         },
-        secureInputMonitorFactory: @escaping SecureInputMonitorFactory = { SecureInputMonitor() }
+        secureInputMonitorFactory: @escaping SecureInputMonitorFactory = { SecureInputMonitor() },
+        updateCheckerFactory: @escaping UpdateCheckerFactory = { UpdateChecker() }
     ) {
         self.permissionController = permissionController
         self.permissionObserver = permissionObserver
@@ -51,6 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.eventTapFactory = eventTapFactory
         self.statusBarFactory = statusBarFactory
         self.secureInputMonitorFactory = secureInputMonitorFactory
+        self.updateCheckerFactory = updateCheckerFactory
         super.init()
     }
 
@@ -61,7 +65,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let stats = statisticsFactory()
         let eventTap = eventTapFactory(stats, permissionController)
         let secureInputMonitor = secureInputMonitorFactory()
-        statusBarController = statusBarFactory(eventTap, stats, secureInputMonitor, repeatingTaskFactory)
+        let updateChecker = updateCheckerFactory()
+        updateChecker.checkInBackground()
+        statusBarController = statusBarFactory(eventTap, stats, secureInputMonitor, updateChecker, repeatingTaskFactory)
         statusBarController?.start()
         eventTapManager = eventTap
         startPermissionMonitoring()

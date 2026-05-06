@@ -213,7 +213,8 @@ final class AppDelegateTests: XCTestCase {
             activationPolicySetter: activationPolicySetter,
             statisticsFactory: { StatisticsManager(defaults: makeAppDelegateTestDefaults()) },
             eventTapFactory: { _, _ in eventTap },
-            statusBarFactory: { _, _, _, _ in statusBar }
+            statusBarFactory: { _, _, _, _, _ in statusBar },
+            updateCheckerFactory: { MockUpdateChecker() }
         )
     }
 }
@@ -358,4 +359,10 @@ private final class MockRepeatingTaskFactory {
         createdTasks.append(task)
         return task
     }
+}
+
+private final class MockUpdateChecker: UpdateChecking {
+    var result: UpdateResult = .unknown
+    private(set) var checkInBackgroundCallCount = 0
+    func checkInBackground() { checkInBackgroundCallCount += 1 }
 }
