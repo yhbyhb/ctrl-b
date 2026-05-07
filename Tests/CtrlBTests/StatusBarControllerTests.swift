@@ -92,6 +92,18 @@ final class StatusBarControllerTests: XCTestCase {
         XCTAssertEqual(factory.lastTask?.cancelCallCount, 1)
     }
 
+    func test_start_calledTwice_doesNotLeakPollingTask() {
+        let factory = MockRepeatingTaskFactory()
+        let sut = makeSUT(taskFactory: factory)
+        sut.start()
+        let firstTask = factory.lastTask
+
+        sut.start()
+
+        XCTAssertEqual(firstTask?.cancelCallCount, 1,
+                       "Re-entering start() must cancel the previous polling task")
+    }
+
     func test_checkForUpdatesItem_whenUnknown_triggersBackgroundCheck() {
         let updateChecker = MockUpdateChecker()
         updateChecker.result = .unknown

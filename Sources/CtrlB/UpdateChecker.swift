@@ -64,6 +64,14 @@ final class UpdateChecker: UpdateChecking {
             }
             let raw = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
             let latest = raw.components(separatedBy: "-").first ?? raw
+            // Guard against tags like "nightly" that survive prefix stripping but
+            // contain no version components — comparing them would silently
+            // report .upToDate, which is misleading.
+            guard !latest.split(separator: ".").compactMap({ Int($0) }).isEmpty else {
+                log.info("Update check: unparseable version tag '\(tagName, privacy: .public)'")
+                DispatchQueue.main.async { self.isChecking = false }
+                return
+            }
             let newResult: UpdateResult = isNewerVersion(latest, than: self.currentVersion)
                 ? .available(latestVersion: latest)
                 : .upToDate

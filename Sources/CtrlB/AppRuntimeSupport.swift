@@ -63,6 +63,20 @@ final class TimerRepeatingTask: RepeatingTask {
         }
     }
 
+    deinit {
+        // Safety net: if the holder forgets to cancel, invalidate the timer.
+        // Timer.invalidate must run on the run-loop thread that owns it
+        // (typically main); deinit can fire from any thread, so dispatch
+        // when we're not already on main.
+        let strayTimer = timer
+        timer = nil
+        if Thread.isMainThread {
+            strayTimer?.invalidate()
+        } else if let strayTimer {
+            DispatchQueue.main.async { strayTimer.invalidate() }
+        }
+    }
+
     func cancel() {
         timer?.invalidate()
         timer = nil
