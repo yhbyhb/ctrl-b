@@ -17,9 +17,19 @@
 "menu.login.enabled" = "✓ ログイン時に起動";
 "menu.login.disabled" = "ログイン時に起動";
 "menu.about" = "ctrl-b について";
-"menu.check_for_updates" = "アップデートを確認";
-"menu.update_available" = "アップデート利用可能: v%@ →";
+"menu.check_for_updates" = "アップデートを確認…";
 "menu.quit" = "終了";
+
+/* Update Check Dialog */
+"update.up_to_date.title" = "最新バージョンです";
+"update.up_to_date.message" = "ctrl-bは現在利用可能な最新バージョンで実行されています。";
+"update.available.title" = "新しいバージョンが利用可能です";
+"update.available.message" = "バージョン %@ が利用可能です。今すぐダウンロードしますか?";
+"update.unknown.title" = "アップデートの確認に失敗しました";
+"update.unknown.message" = "アップデートを確認できませんでした。ネットワーク接続を確認して再試行してください。";
+"update.button.ok" = "OK";
+"update.button.download" = "ダウンロード";
+"update.button.cancel" = "キャンセル";
 "tooltip.state.enabled" = "ctrl-b は Ctrl+キー入力をリマップ中です。";
 "tooltip.state.paused" = "ctrl-b は一時停止中です。";
 "tooltip.state.permission_required" = "ctrl-b にはアクセシビリティの許可が必要です。";

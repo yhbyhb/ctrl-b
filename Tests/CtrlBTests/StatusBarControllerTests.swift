@@ -104,51 +104,118 @@ final class StatusBarControllerTests: XCTestCase {
                        "Re-entering start() must cancel the previous polling task")
     }
 
-    func test_checkForUpdatesItem_whenUnknown_triggersBackgroundCheck() {
-        let updateChecker = MockUpdateChecker()
-        updateChecker.result = .unknown
-        let sut = makeSUT(updateChecker: updateChecker)
-        let menu = NSMenu()
+    func test_menu_alwaysShowsCheckForUpdatesEntry_regardlessOfState() throws {
+        // Sparkle-style: the menu entry is always "Check for Updates…" so the
+        // menu does not communicate update state — the dialog does.
+        for state in [UpdateResult.unknown, .upToDate, .available(latestVersion: "9.9.9")] {
+            let updateChecker = MockUpdateChecker()
+            updateChecker.result = state
+            let sut = makeSUT(updateChecker: updateChecker)
+            let menu = NSMenu()
 
-        sut.menuWillOpen(menu)
-        let item = findMenuItem(in: menu, titleContains: "Check for Updates")
-        XCTAssertNotNil(item, "Expected a 'Check for Updates' item in the menu")
-        invoke(item)
-
-        XCTAssertEqual(updateChecker.checkInBackgroundCallCount, 1)
+            sut.menuWillOpen(menu)
+            let item = try XCTUnwrap(findMenuItem(in: menu, titleContains: "Check for Updates"),
+                                      "Expected 'Check for Updates' item for state \(state)")
+            XCTAssertNil(findMenuItem(in: menu, titleContains: "9.9.9"),
+                         "Menu must not surface the available version directly")
+            XCTAssertEqual(item.action?.description, "checkForUpdates")
+        }
     }
 
-    func test_checkForUpdatesItem_whenUpToDate_triggersBackgroundCheck() {
+    func test_checkForUpdates_whenUpToDate_presentsResultThroughInjectedPresenter() {
         let updateChecker = MockUpdateChecker()
         updateChecker.result = .upToDate
-        let sut = makeSUT(updateChecker: updateChecker)
+        var presentedResult: UpdateResult?
+        let sut = makeSUT(updateChecker: updateChecker, updateResultPresenter: { result, _ in
+            presentedResult = result
+        })
         let menu = NSMenu()
 
         sut.menuWillOpen(menu)
-        let item = findMenuItem(in: menu, titleContains: "Check for Updates")
-        XCTAssertNotNil(item)
-        invoke(item)
+        invoke(findMenuItem(in: menu, titleContains: "Check for Updates"))
 
         XCTAssertEqual(updateChecker.checkInBackgroundCallCount, 1)
+        guard case .upToDate = presentedResult else {
+            return XCTFail("Expected presenter to be called with .upToDate, got \(String(describing: presentedResult))")
+        }
     }
 
-    func test_updateAvailableItem_isWiredToOpenLatestRelease() throws {
-        // When an update is available, the menu item must invoke
-        // openLatestRelease (browser → GitHub release), not checkForUpdates.
-        // We assert on selector identity instead of invoking, because
-        // invoking would call NSWorkspace.shared.open.
+    func test_checkForUpdates_whenAvailable_presentsResultAndCanInvokeDownload() {
         let updateChecker = MockUpdateChecker()
         updateChecker.result = .available(latestVersion: "9.9.9")
-        let sut = makeSUT(updateChecker: updateChecker)
+        var capturedDownload: (() -> Void)?
+        var presentedResult: UpdateResult?
+        let sut = makeSUT(updateChecker: updateChecker, updateResultPresenter: { result, onDownload in
+            presentedResult = result
+            capturedDownload = onDownload
+        })
         let menu = NSMenu()
 
         sut.menuWillOpen(menu)
-        let item = try XCTUnwrap(findMenuItem(in: menu, titleContains: "9.9.9"),
-                                  "Expected an 'Update Available' item with the latest version")
+        invoke(findMenuItem(in: menu, titleContains: "Check for Updates"))
 
-        XCTAssertEqual(item.action?.description, "openLatestRelease",
-                       "Update Available item must wire to openLatestRelease, not checkForUpdates")
-        XCTAssertEqual(updateChecker.checkInBackgroundCallCount, 0)
+        guard case .available(let version) = presentedResult else {
+            return XCTFail("Expected .available, got \(String(describing: presentedResult))")
+        }
+        XCTAssertEqual(version, "9.9.9")
+        XCTAssertNotNil(capturedDownload, "Presenter must receive an onDownload closure")
+    }
+
+    func test_downloadCallback_opensReleasesURL() {
+        let updateChecker = MockUpdateChecker()
+        updateChecker.result = .available(latestVersion: "9.9.9")
+        var openedURLs: [URL] = []
+        // Simulate the user clicking Download by having the presenter
+        // invoke onDownload immediately.
+        let sut = makeSUT(
+            updateChecker: updateChecker,
+            updateResultPresenter: { _, onDownload in onDownload() },
+            urlOpener: { url in openedURLs.append(url) }
+        )
+        let menu = NSMenu()
+
+        sut.menuWillOpen(menu)
+        invoke(findMenuItem(in: menu, titleContains: "Check for Updates"))
+
+        XCTAssertEqual(openedURLs, [UpdateChecker.releasesURL],
+                       "Download must open the GitHub releases URL exactly once")
+    }
+
+    func test_downloadCallback_notInvokedWhenPresenterDeclines() {
+        // If the presenter never calls onDownload (user clicks Cancel, or
+        // upToDate/unknown branches), no URL is opened.
+        let updateChecker = MockUpdateChecker()
+        updateChecker.result = .available(latestVersion: "9.9.9")
+        var openedURLs: [URL] = []
+        let sut = makeSUT(
+            updateChecker: updateChecker,
+            updateResultPresenter: { _, _ in /* presenter ignores onDownload */ },
+            urlOpener: { url in openedURLs.append(url) }
+        )
+        let menu = NSMenu()
+
+        sut.menuWillOpen(menu)
+        invoke(findMenuItem(in: menu, titleContains: "Check for Updates"))
+
+        XCTAssertTrue(openedURLs.isEmpty,
+                      "URL must not be opened unless the presenter invokes onDownload")
+    }
+
+    func test_checkForUpdates_whenUnknown_presentsUnknownResult() {
+        let updateChecker = MockUpdateChecker()
+        updateChecker.result = .unknown
+        var presentedResult: UpdateResult?
+        let sut = makeSUT(updateChecker: updateChecker, updateResultPresenter: { result, _ in
+            presentedResult = result
+        })
+        let menu = NSMenu()
+
+        sut.menuWillOpen(menu)
+        invoke(findMenuItem(in: menu, titleContains: "Check for Updates"))
+
+        guard case .unknown = presentedResult else {
+            return XCTFail("Expected .unknown, got \(String(describing: presentedResult))")
+        }
     }
 }
 
@@ -241,14 +308,18 @@ private func makeSUT(
     ),
     secureInputMonitor: SecureInputMonitoring = MockSecureInputMonitor(initialState: false),
     updateChecker: UpdateChecking = MockUpdateChecker(),
-    taskFactory: MockRepeatingTaskFactory = MockRepeatingTaskFactory()
+    taskFactory: MockRepeatingTaskFactory = MockRepeatingTaskFactory(),
+    updateResultPresenter: @escaping UpdateResultPresenting = { _, _ in },
+    urlOpener: @escaping URLOpening = { _ in }
 ) -> StatusBarController {
     StatusBarController(
         eventTap: eventTap,
         stats: StatisticsManager(defaults: makeStatusBarTestDefaults()),
         secureInputMonitor: secureInputMonitor,
         updateChecker: updateChecker,
-        repeatingTaskFactory: taskFactory.make
+        repeatingTaskFactory: taskFactory.make,
+        updateResultPresenter: updateResultPresenter,
+        urlOpener: urlOpener
     )
 }
 
@@ -259,5 +330,8 @@ private func makeStatusBarTestDefaults() -> UserDefaults {
 private final class MockUpdateChecker: UpdateChecking {
     var result: UpdateResult = .unknown
     private(set) var checkInBackgroundCallCount = 0
-    func checkInBackground() { checkInBackgroundCallCount += 1 }
+    func checkInBackground(completion: ((UpdateResult) -> Void)?) {
+        checkInBackgroundCallCount += 1
+        completion?(result)
+    }
 }

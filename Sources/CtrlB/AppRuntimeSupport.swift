@@ -96,7 +96,9 @@ typealias StatusBarFactory = (
     _ statisticsManager: StatisticsManager,
     _ secureInputMonitor: SecureInputMonitoring,
     _ updateChecker: UpdateChecking,
-    _ repeatingTaskFactory: @escaping RepeatingTaskFactory
+    _ repeatingTaskFactory: @escaping RepeatingTaskFactory,
+    _ updateResultPresenter: @escaping UpdateResultPresenting,
+    _ urlOpener: @escaping URLOpening
 ) -> StatusBarControlling
 
 enum PermissionPollingPolicy {

@@ -134,6 +134,150 @@ final class UpdateCheckerTests: XCTestCase {
 
         // second call should be a no-op — no assertion needed beyond "no crash"
     }
+
+    // MARK: - Completion callback
+
+    func test_completion_onUpToDate_firesWithUpToDate() {
+        let expectation = expectation(description: "completion fired")
+        let session = makeSession(tagName: "v1.1.0")
+        let sut = UpdateChecker(session: session, currentVersion: "1.1.0")
+
+        sut.checkInBackground { result in
+            XCTAssertTrue(Thread.isMainThread,
+                          "Completion must be delivered on the main thread")
+            if case .upToDate = result {
+                expectation.fulfill()
+            } else {
+                XCTFail("Expected .upToDate, got \(result)")
+            }
+        }
+        waitForExpectations(timeout: 2)
+    }
+
+    func test_completion_onAvailable_firesWithVersion() {
+        let expectation = expectation(description: "completion fired")
+        let session = makeSession(tagName: "v1.9.0")
+        let sut = UpdateChecker(session: session, currentVersion: "1.1.0")
+
+        sut.checkInBackground { result in
+            if case .available(let version) = result {
+                XCTAssertEqual(version, "1.9.0")
+                expectation.fulfill()
+            } else {
+                XCTFail("Expected .available, got \(result)")
+            }
+        }
+        waitForExpectations(timeout: 2)
+    }
+
+    func test_completion_onInvalidResponse_firesWithCachedUnknown() {
+        let expectation = expectation(description: "completion fired")
+        let session = makeSession(responseData: Data("not json".utf8))
+        let sut = UpdateChecker(session: session, currentVersion: "1.1.0")
+
+        sut.checkInBackground { result in
+            XCTAssertTrue(Thread.isMainThread,
+                          "Failure-path completion must also be delivered on main")
+            // Result stays as .unknown rather than being silently
+            // swallowed; the caller still gets a callback so the UI can react.
+            if case .unknown = result {
+                expectation.fulfill()
+            } else {
+                XCTFail("Expected .unknown on invalid response, got \(result)")
+            }
+        }
+        waitForExpectations(timeout: 2)
+    }
+
+    func test_completion_onValidJSONWithoutTagName_firesWithUnknown() {
+        // Distinct from invalid JSON: the body parses, but the GitHub
+        // response shape is unexpected (e.g., an error envelope without
+        // a tag_name field). Hits the same finishUnknown path but a
+        // different guard branch.
+        let expectation = expectation(description: "completion fired")
+        let session = makeSession(responseData: Data("{\"message\":\"Not Found\"}".utf8))
+        let sut = UpdateChecker(session: session, currentVersion: "1.1.0")
+
+        sut.checkInBackground { result in
+            if case .unknown = result {
+                expectation.fulfill()
+            } else {
+                XCTFail("Expected .unknown when tag_name is missing, got \(result)")
+            }
+        }
+        waitForExpectations(timeout: 2)
+    }
+
+    func test_completion_onUnparseableTag_firesWithUnknown() {
+        // 'nightly' survives prefix stripping but has no numeric components,
+        // so the tag-validity guard rejects it. The companion sut.result
+        // test exists; this one verifies the completion contract too.
+        let expectation = expectation(description: "completion fired")
+        let session = makeSession(tagName: "nightly")
+        let sut = UpdateChecker(session: session, currentVersion: "1.1.0")
+
+        sut.checkInBackground { result in
+            if case .unknown = result {
+                expectation.fulfill()
+            } else {
+                XCTFail("Expected .unknown for unparseable tag, got \(result)")
+            }
+        }
+        waitForExpectations(timeout: 2)
+    }
+
+    func test_completion_failureAfterPriorSuccess_deliversUnknownNotCached() {
+        let session = makeSession(tagName: "v1.1.0")
+        let sut = UpdateChecker(session: session, currentVersion: "1.1.0")
+
+        let firstExpectation = expectation(description: "first check")
+        sut.checkInBackground { result in
+            if case .upToDate = result {
+                firstExpectation.fulfill()
+            } else {
+                XCTFail("Expected first .upToDate, got \(result)")
+            }
+        }
+        wait(for: [firstExpectation], timeout: 2)
+
+        // Now flip the mock to return an HTTP failure for the next request.
+        MockURLProtocol.setHandler { _ in (500, Data()) }
+
+        let secondExpectation = expectation(description: "second check")
+        sut.checkInBackground { result in
+            // Regression guard: a failure must communicate .unknown rather
+            // than echo the previously cached .upToDate.
+            if case .unknown = result {
+                secondExpectation.fulfill()
+            } else {
+                XCTFail("Expected .unknown after failure, got cached \(result)")
+            }
+        }
+        wait(for: [secondExpectation], timeout: 2)
+    }
+
+    func test_completion_onReentry_firesImmediatelyWithCurrentResult() {
+        let firstExpectation = expectation(description: "first completion")
+        let session = makeSession(tagName: "v1.9.0")
+        let sut = UpdateChecker(session: session, currentVersion: "1.1.0")
+
+        sut.checkInBackground { _ in
+            firstExpectation.fulfill()
+        }
+        // Immediate re-entry while the first request is still in flight.
+        var reentryFired = false
+        var reentryOnMainThread = false
+        sut.checkInBackground { _ in
+            reentryFired = true
+            reentryOnMainThread = Thread.isMainThread
+        }
+
+        waitForExpectations(timeout: 2)
+        XCTAssertTrue(reentryFired,
+                      "Re-entry call must still fire its completion (with the cached result) instead of silently dropping it")
+        XCTAssertTrue(reentryOnMainThread,
+                      "Re-entry path must also dispatch completion to main")
+    }
 }
 
 // MARK: - Helpers

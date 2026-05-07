@@ -12,7 +12,13 @@ enum UpdateResult {
 
 protocol UpdateChecking: AnyObject {
     var result: UpdateResult { get }
-    func checkInBackground()
+    func checkInBackground(completion: ((UpdateResult) -> Void)?)
+}
+
+extension UpdateChecking {
+    func checkInBackground() {
+        checkInBackground(completion: nil)
+    }
 }
 
 final class UpdateChecker: UpdateChecking {
@@ -34,8 +40,15 @@ final class UpdateChecker: UpdateChecking {
         self.currentVersion = currentVersion
     }
 
-    func checkInBackground() {
-        guard !isChecking else { return }
+    func checkInBackground(completion: ((UpdateResult) -> Void)? = nil) {
+        guard !isChecking else {
+            // Re-entry while a check is in flight: deliver the cached result
+            // on main so callers always observe completion off the call stack
+            // (matches the success/failure paths).
+            let cached = result
+            DispatchQueue.main.async { completion?(cached) }
+            return
+        }
         isChecking = true
 
         var request = URLRequest(url: Self.apiURL)
@@ -44,22 +57,29 @@ final class UpdateChecker: UpdateChecking {
 
         session.dataTask(with: request) { [weak self] data, response, error in
             guard let self else { return }
+            let finishUnknown = { (reason: String) in
+                log.info("Update check: \(reason, privacy: .public)")
+                DispatchQueue.main.async {
+                    // Reset to .unknown so that a transient failure isn't
+                    // misreported as a stale cached .upToDate / .available.
+                    self.result = .unknown
+                    self.isChecking = false
+                    completion?(.unknown)
+                }
+            }
             guard let data, error == nil else {
-                log.info("Update check failed: \(String(describing: error))")
-                DispatchQueue.main.async { self.isChecking = false }
+                finishUnknown("failed: \(String(describing: error))")
                 return
             }
             if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-                log.info("Update check HTTP \(http.statusCode)")
-                DispatchQueue.main.async { self.isChecking = false }
+                finishUnknown("HTTP \(http.statusCode)")
                 return
             }
             guard
                 let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                 let tagName = json["tag_name"] as? String
             else {
-                log.info("Update check: unexpected response format")
-                DispatchQueue.main.async { self.isChecking = false }
+                finishUnknown("unexpected response format")
                 return
             }
             let raw = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
@@ -68,8 +88,7 @@ final class UpdateChecker: UpdateChecking {
             // contain no version components — comparing them would silently
             // report .upToDate, which is misleading.
             guard !latest.split(separator: ".").compactMap({ Int($0) }).isEmpty else {
-                log.info("Update check: unparseable version tag '\(tagName, privacy: .public)'")
-                DispatchQueue.main.async { self.isChecking = false }
+                finishUnknown("unparseable version tag '\(tagName)'")
                 return
             }
             let newResult: UpdateResult = isNewerVersion(latest, than: self.currentVersion)
@@ -79,6 +98,7 @@ final class UpdateChecker: UpdateChecking {
                 self.result = newResult
                 self.isChecking = false
                 log.info("Update check complete: \(String(describing: newResult))")
+                completion?(newResult)
             }
         }.resume()
     }

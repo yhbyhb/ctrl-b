@@ -17,9 +17,19 @@
 "menu.login.enabled" = "✓ 登录时启动";
 "menu.login.disabled" = "登录时启动";
 "menu.about" = "关于 ctrl-b";
-"menu.check_for_updates" = "检查更新";
-"menu.update_available" = "有新版本: v%@ →";
+"menu.check_for_updates" = "检查更新…";
 "menu.quit" = "退出";
+
+/* Update Check Dialog */
+"update.up_to_date.title" = "已是最新版本";
+"update.up_to_date.message" = "ctrl-b 当前运行的是最新可用版本。";
+"update.available.title" = "有新版本可用";
+"update.available.message" = "版本 %@ 已发布,要立即下载吗?";
+"update.unknown.title" = "检查更新失败";
+"update.unknown.message" = "无法检查更新。请检查网络连接后重试。";
+"update.button.ok" = "确定";
+"update.button.download" = "下载";
+"update.button.cancel" = "取消";
 "tooltip.state.enabled" = "ctrl-b 正在重映射 Ctrl+按键输入。";
 "tooltip.state.paused" = "ctrl-b 当前已暂停。";
 "tooltip.state.permission_required" = "ctrl-b 需要辅助功能权限。";

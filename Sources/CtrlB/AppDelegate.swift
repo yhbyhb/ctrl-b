@@ -34,13 +34,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         eventTapFactory: @escaping EventTapFactory = { stats, permissionController in
             EventTapManager(statisticsManager: stats, permissionController: permissionController)
         },
-        statusBarFactory: @escaping StatusBarFactory = { eventTap, stats, secureInputMonitor, updateChecker, repeatingTaskFactory in
+        statusBarFactory: @escaping StatusBarFactory = { eventTap, stats, secureInputMonitor, updateChecker, repeatingTaskFactory, updateResultPresenter, urlOpener in
             return StatusBarController(
                 eventTap: eventTap,
                 stats: stats,
                 secureInputMonitor: secureInputMonitor,
                 updateChecker: updateChecker,
-                repeatingTaskFactory: repeatingTaskFactory
+                repeatingTaskFactory: repeatingTaskFactory,
+                updateResultPresenter: updateResultPresenter,
+                urlOpener: urlOpener
             )
         },
         secureInputMonitorFactory: @escaping SecureInputMonitorFactory = { SecureInputMonitor() },
@@ -67,7 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let secureInputMonitor = secureInputMonitorFactory()
         let updateChecker = updateCheckerFactory()
         updateChecker.checkInBackground()
-        statusBarController = statusBarFactory(eventTap, stats, secureInputMonitor, updateChecker, repeatingTaskFactory)
+        statusBarController = statusBarFactory(eventTap, stats, secureInputMonitor, updateChecker, repeatingTaskFactory, presentUpdateResultAsAlert, { NSWorkspace.shared.open($0) })
         statusBarController?.start()
         eventTapManager = eventTap
         startPermissionMonitoring()
