@@ -13,11 +13,17 @@ final class EventTapManager: EventTapControlling {
     private let statisticsManager: StatisticsManager
     private let permissionController: AccessibilityPermissionControlling
     private let eventTapEngine: EventTapEngineControlling
+    private let isIMEActive: () -> Bool
 
     private let prefixKeyCode: Int64 = 11  // Ctrl+b (configurable in the future)
     private var pendingFollowUp = false
     private var followUpTimer: DispatchWorkItem?
     private let followUpTimeout: TimeInterval = 1.5
+    /// keyCodes whose keyDown was remapped and whose keyUp is still pending.
+    /// Used to pair the keyUp with the same remap decision so the target app
+    /// always sees a balanced (synthetic-keyDown, synthetic-keyUp) sequence,
+    /// even if the IME is toggled mid-press.
+    private var pressedRemappedKeyCodes: Set<Int64> = []
 
     private(set) var state: EventTapState = .permissionRequired {
         didSet {
@@ -31,11 +37,13 @@ final class EventTapManager: EventTapControlling {
     init(
         statisticsManager: StatisticsManager,
         permissionController: AccessibilityPermissionControlling = AccessibilityPermissionController(),
-        eventTapEngine: EventTapEngineControlling = EventTapEngine()
+        eventTapEngine: EventTapEngineControlling = EventTapEngine(),
+        isIMEActive: @escaping () -> Bool = isInputMethodActive
     ) {
         self.statisticsManager = statisticsManager
         self.permissionController = permissionController
         self.eventTapEngine = eventTapEngine
+        self.isIMEActive = isIMEActive
     }
 
     func start(reason: EventTapStateChangeReason = .launch) {
@@ -44,6 +52,7 @@ final class EventTapManager: EventTapControlling {
 
     func pause() {
         eventTapEngine.stop()
+        pressedRemappedKeyCodes.removeAll()
         transition(to: .paused, reason: .userPaused)
     }
 
@@ -52,6 +61,7 @@ final class EventTapManager: EventTapControlling {
         pendingFollowUp = false
         followUpTimer?.cancel()
         followUpTimer = nil
+        pressedRemappedKeyCodes.removeAll()
     }
 
     func toggle() {
@@ -107,6 +117,16 @@ final class EventTapManager: EventTapControlling {
     func debugSetAwaitingFollowUpForTests(_ isAwaiting: Bool) {
         pendingFollowUp = isAwaiting
     }
+
+    func debugTrackedRemappedKeyCodesForTests() -> Set<Int64> {
+        pressedRemappedKeyCodes
+    }
+
+    func debugHandleKeyEventForTests(_ event: CGEvent, type: CGEventType) -> Bool {
+        // Returns true if the event was discarded/remapped (caller would return nil),
+        // false if passed through.
+        handleKeyEvent(event, type: type) == nil
+    }
     #endif
 
     // MARK: - Private
@@ -160,7 +180,7 @@ final class EventTapManager: EventTapControlling {
 
         guard hasNoModifiers,
               let ascii = keyCodeToLowerASCII[followUpKeyCode],
-              isInputMethodActive() else {
+              isIMEActive() else {
             log.debug("Follow-up dismissed: keyCode=\(followUpKeyCode) hasNoModifiers=\(hasNoModifiers)")
             return Unmanaged.passRetained(event)
         }
@@ -197,55 +217,67 @@ final class EventTapManager: EventTapControlling {
             return handleFollowUp(event)
         }
 
-        // Check target modifier (currently: Ctrl)
-        guard !event.flags.isDisjoint(with: targetModifiers) else {
-            return Unmanaged.passRetained(event)
-        }
-
-        // Check target keyCode (a-z alphabet keys only)
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-        guard keyCodeToLowerASCII[keyCode] != nil else {
+
+        // For keyUp, mirror the keyDown remap decision so the target app sees
+        // a balanced synthetic pair even if IME state changed mid-press.
+        if type == .keyUp {
+            guard pressedRemappedKeyCodes.contains(keyCode) else {
+                return Unmanaged.passRetained(event)
+            }
+            pressedRemappedKeyCodes.remove(keyCode)
+            guard postSyntheticEvent(forOriginal: event, keyCode: keyCode, keyDown: false) else {
+                return Unmanaged.passRetained(event)
+            }
+            return nil
+        }
+
+        // keyDown path — verify all conditions before remapping.
+        guard !event.flags.isDisjoint(with: targetModifiers),
+              keyCodeToLowerASCII[keyCode] != nil,
+              isIMEActive() else {
             return Unmanaged.passRetained(event)
         }
 
-        // Check if IME input source is active
-        guard isInputMethodActive() else {
+        guard postSyntheticEvent(forOriginal: event, keyCode: keyCode, keyDown: true) else {
             return Unmanaged.passRetained(event)
         }
 
-        // Discard original + create synthetic event
+        pressedRemappedKeyCodes.insert(keyCode)
+        statisticsManager.recordRemap()
+
+        // Arm follow-up when prefix key (Ctrl+b) is remapped
+        if keyCode == prefixKeyCode {
+            pendingFollowUp = true
+            followUpTimer?.cancel()
+            let timer = DispatchWorkItem { [weak self] in
+                self?.pendingFollowUp = false
+            }
+            followUpTimer = timer
+            DispatchQueue.main.asyncAfter(deadline: .now() + followUpTimeout, execute: timer)
+            log.debug("Follow-up armed for next key (timeout: \(self.followUpTimeout)s)")
+        }
+
+        return nil
+    }
+
+    /// Posts a synthetic event mirroring the original. Returns true on success.
+    private func postSyntheticEvent(
+        forOriginal event: CGEvent,
+        keyCode: Int64,
+        keyDown: Bool
+    ) -> Bool {
         guard let source = CGEventSource(stateID: .hidSystemState),
               let newEvent = CGEvent(keyboardEventSource: source,
                                      virtualKey: CGKeyCode(keyCode),
-                                     keyDown: type == .keyDown) else {
-            return Unmanaged.passRetained(event)
+                                     keyDown: keyDown) else {
+            return false
         }
-
         newEvent.flags = event.flags
         newEvent.setIntegerValueField(.eventSourceUserData, value: Self.sentinel)
-
-        log.debug("REMAP: keyCode=\(keyCode) type=\(type == .keyDown ? "keyDown" : "keyUp") flags=0x\(String(event.flags.rawValue, radix: 16))")
-
+        log.debug("REMAP: keyCode=\(keyCode) type=\(keyDown ? "keyDown" : "keyUp") flags=0x\(String(event.flags.rawValue, radix: 16))")
         newEvent.post(tap: .cghidEventTap)
-
-        // Record statistics on keyDown only
-        if type == .keyDown {
-            statisticsManager.recordRemap()
-
-            // Arm follow-up when prefix key (Ctrl+b) is remapped
-            if keyCode == prefixKeyCode {
-                pendingFollowUp = true
-                followUpTimer?.cancel()
-                let timer = DispatchWorkItem { [weak self] in
-                    self?.pendingFollowUp = false
-                }
-                followUpTimer = timer
-                DispatchQueue.main.asyncAfter(deadline: .now() + followUpTimeout, execute: timer)
-                log.debug("Follow-up armed for next key (timeout: \(self.followUpTimeout)s)")
-            }
-        }
-
-        return nil  // discard original
+        return true
     }
 
 }
