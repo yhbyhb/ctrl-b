@@ -91,6 +91,67 @@ final class StatusBarControllerTests: XCTestCase {
 
         XCTAssertEqual(factory.lastTask?.cancelCallCount, 1)
     }
+
+    func test_checkForUpdatesItem_whenUnknown_triggersBackgroundCheck() {
+        let updateChecker = MockUpdateChecker()
+        updateChecker.result = .unknown
+        let sut = makeSUT(updateChecker: updateChecker)
+        let menu = NSMenu()
+
+        sut.menuWillOpen(menu)
+        let item = findMenuItem(in: menu, titleContains: "Check for Updates")
+        XCTAssertNotNil(item, "Expected a 'Check for Updates' item in the menu")
+        invoke(item)
+
+        XCTAssertEqual(updateChecker.checkInBackgroundCallCount, 1)
+    }
+
+    func test_checkForUpdatesItem_whenUpToDate_triggersBackgroundCheck() {
+        let updateChecker = MockUpdateChecker()
+        updateChecker.result = .upToDate
+        let sut = makeSUT(updateChecker: updateChecker)
+        let menu = NSMenu()
+
+        sut.menuWillOpen(menu)
+        let item = findMenuItem(in: menu, titleContains: "Check for Updates")
+        XCTAssertNotNil(item)
+        invoke(item)
+
+        XCTAssertEqual(updateChecker.checkInBackgroundCallCount, 1)
+    }
+
+    func test_updateAvailableItem_isWiredToOpenLatestRelease() throws {
+        // When an update is available, the menu item must invoke
+        // openLatestRelease (browser → GitHub release), not checkForUpdates.
+        // We assert on selector identity instead of invoking, because
+        // invoking would call NSWorkspace.shared.open.
+        let updateChecker = MockUpdateChecker()
+        updateChecker.result = .available(latestVersion: "9.9.9")
+        let sut = makeSUT(updateChecker: updateChecker)
+        let menu = NSMenu()
+
+        sut.menuWillOpen(menu)
+        let item = try XCTUnwrap(findMenuItem(in: menu, titleContains: "9.9.9"),
+                                  "Expected an 'Update Available' item with the latest version")
+
+        XCTAssertEqual(item.action?.description, "openLatestRelease",
+                       "Update Available item must wire to openLatestRelease, not checkForUpdates")
+        XCTAssertEqual(updateChecker.checkInBackgroundCallCount, 0)
+    }
+}
+
+// MARK: - Menu helpers
+
+private func findMenuItem(in menu: NSMenu, titleContains needle: String) -> NSMenuItem? {
+    menu.items.first { $0.title.contains(needle) }
+}
+
+private func invoke(_ item: NSMenuItem?) {
+    guard let item, let action = item.action, let target = item.target else {
+        XCTFail("Menu item missing action or target")
+        return
+    }
+    _ = (target as AnyObject).perform(action, with: item)
 }
 
 // MARK: - Test fixtures

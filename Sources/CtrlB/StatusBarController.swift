@@ -108,12 +108,15 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
         menu.addItem(action(localized("menu.about"), #selector(showAbout)))
 
         let checkForUpdatesTitle: String
+        let checkForUpdatesSelector: Selector
         if case .available(let version) = updateChecker.result {
             checkForUpdatesTitle = String(format: localized("menu.update_available"), version)
+            checkForUpdatesSelector = #selector(openLatestRelease)
         } else {
             checkForUpdatesTitle = localized("menu.check_for_updates")
+            checkForUpdatesSelector = #selector(checkForUpdates)
         }
-        menu.addItem(action(checkForUpdatesTitle, #selector(openLatestRelease)))
+        menu.addItem(action(checkForUpdatesTitle, checkForUpdatesSelector))
 
         let quit = NSMenuItem(title: localized("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
@@ -128,6 +131,7 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
     @objc private func toggleLaunchAtLogin() { LaunchAtLoginManager.toggle() }
     @objc private func showAbout() { aboutPanel.show(nil) }
     @objc private func openLatestRelease() { NSWorkspace.shared.open(UpdateChecker.releasesURL) }
+    @objc private func checkForUpdates() { updateChecker.checkInBackground() }
 
     // MARK: - Helpers
 
