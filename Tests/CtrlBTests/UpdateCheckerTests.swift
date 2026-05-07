@@ -108,6 +108,23 @@ final class UpdateCheckerTests: XCTestCase {
         waitForExpectations(timeout: 2)
     }
 
+    func test_checkInBackground_withUnparseableTag_keepsUnknown() {
+        let expectation = expectation(description: "result updated")
+        let session = makeSession(tagName: "nightly")
+        let sut = UpdateChecker(session: session, currentVersion: "1.1.0")
+
+        sut.checkInBackground()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if case .unknown = sut.result {
+                expectation.fulfill()
+            } else {
+                XCTFail("Expected .unknown for non-numeric tag, got \(sut.result)")
+            }
+        }
+        waitForExpectations(timeout: 2)
+    }
+
     func test_checkInBackground_concurrentCall_ignored() {
         let session = makeSession(tagName: "v1.9.0")
         let sut = UpdateChecker(session: session, currentVersion: "1.1.0")

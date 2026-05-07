@@ -39,6 +39,9 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
     deinit { stop() }
 
     func start() {
+        // Tear down any prior monitoring first so a second start() call does
+        // not accumulate notification observers or polling timers.
+        stop()
         setupStatusItem()
         lastSecureInputActive = secureInputMonitor.isActive()
         applyStatusAppearance(for: eventTap.state)
