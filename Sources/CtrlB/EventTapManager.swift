@@ -134,14 +134,17 @@ final class EventTapManager: EventTapControlling {
     func handleTapDisabled(type: CGEventType) {
         guard state == .enabled else { return }
 
-        let reason: EventTapStateChangeReason = switch type {
+        switch type {
         case .tapDisabledByUserInput:
-            .tapDisabledByUserInput
+            // Port is still valid; re-enabling in place is sufficient.
+            eventTapEngine.setEnabled(true)
+            transition(to: .enabled, reason: .tapDisabledByUserInput)
         default:
-            .tapDisabledByTimeout
+            // On .tapDisabledByTimeout the CFMachPort is invalidated by macOS,
+            // so setEnabled(true) is a no-op. Tear down and recreate the tap.
+            eventTapEngine.stop()
+            _ = attemptToEnable(reason: .tapDisabledByTimeout)
         }
-        eventTapEngine.setEnabled(true)
-        transition(to: .enabled, reason: reason)
     }
 
     private func attemptToEnable(reason: EventTapStateChangeReason) -> EventTapState {
@@ -160,7 +163,14 @@ final class EventTapManager: EventTapControlling {
         }
 
         eventTapEngine.setEnabled(true)
-        transition(to: .enabled, reason: reason == .checkAgainRequested ? .checkAgainRequested : .permissionGranted)
+        let successReason: EventTapStateChangeReason
+        switch reason {
+        case .checkAgainRequested, .tapDisabledByTimeout, .userResumed:
+            successReason = reason
+        default:
+            successReason = .permissionGranted
+        }
+        transition(to: .enabled, reason: successReason)
         return state
     }
 
