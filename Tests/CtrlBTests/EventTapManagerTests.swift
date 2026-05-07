@@ -294,6 +294,8 @@ final class EventTapManagerTests: XCTestCase {
             "menu.action.resume",
             "menu.action.open_accessibility_settings",
             "menu.action.check_again",
+            "menu.check_for_updates",
+            "menu.update_available",
             "tooltip.state.enabled",
             "tooltip.state.paused",
             "tooltip.state.permission_required",

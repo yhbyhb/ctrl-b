@@ -17,6 +17,8 @@
 "menu.login.enabled" = "✓ ログイン時に起動";
 "menu.login.disabled" = "ログイン時に起動";
 "menu.about" = "ctrl-b について";
+"menu.check_for_updates" = "アップデートを確認";
+"menu.update_available" = "アップデート利用可能: v%@ →";
 "menu.quit" = "終了";
 "tooltip.state.enabled" = "ctrl-b は Ctrl+キー入力をリマップ中です。";
 "tooltip.state.paused" = "ctrl-b は一時停止中です。";
