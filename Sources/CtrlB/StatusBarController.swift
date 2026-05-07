@@ -2,7 +2,7 @@ import Cocoa
 import CtrlBCore
 import os
 
-private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "SecureInput")
+private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "StatusBar")
 
 final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling {
     private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
