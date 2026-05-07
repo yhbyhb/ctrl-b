@@ -17,9 +17,19 @@
 "menu.login.enabled" = "✓ Launch at Login";
 "menu.login.disabled" = "Launch at Login";
 "menu.about" = "About ctrl-b";
-"menu.check_for_updates" = "Check for Updates";
-"menu.update_available" = "Update Available: v%@ →";
+"menu.check_for_updates" = "Check for Updates…";
 "menu.quit" = "Quit";
+
+/* Update Check Dialog */
+"update.up_to_date.title" = "You're up to date!";
+"update.up_to_date.message" = "ctrl-b is currently running the newest version available.";
+"update.available.title" = "A new version of ctrl-b is available!";
+"update.available.message" = "Version %@ is available. Would you like to download it now?";
+"update.unknown.title" = "Update Check Failed";
+"update.unknown.message" = "Could not check for updates. Please check your network connection and try again.";
+"update.button.ok" = "OK";
+"update.button.download" = "Download";
+"update.button.cancel" = "Cancel";
 "tooltip.state.enabled" = "ctrl-b is actively remapping Ctrl+key input.";
 "tooltip.state.paused" = "ctrl-b is paused.";
 "tooltip.state.permission_required" = "ctrl-b needs Accessibility permission.";

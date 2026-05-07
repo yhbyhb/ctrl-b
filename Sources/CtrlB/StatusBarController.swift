@@ -4,6 +4,9 @@ import os
 
 private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "StatusBar")
 
+typealias UpdateResultPresenting = (_ result: UpdateResult, _ onDownload: @escaping () -> Void) -> Void
+typealias URLOpening = (URL) -> Void
+
 final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling {
     private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let eventTap: EventTapControlling
@@ -12,6 +15,8 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
     private let secureInputMonitor: SecureInputMonitoring
     private let updateChecker: UpdateChecking
     private let repeatingTaskFactory: RepeatingTaskFactory
+    private let updateResultPresenter: UpdateResultPresenting
+    private let urlOpener: URLOpening
     private var lastSecureInputActive = false
     private var pollingTask: RepeatingTask?
 
@@ -19,12 +24,16 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
          stats: StatisticsManager,
          secureInputMonitor: SecureInputMonitoring,
          updateChecker: UpdateChecking,
-         repeatingTaskFactory: @escaping RepeatingTaskFactory) {
+         repeatingTaskFactory: @escaping RepeatingTaskFactory,
+         updateResultPresenter: @escaping UpdateResultPresenting = presentUpdateResultAsAlert,
+         urlOpener: @escaping URLOpening = { NSWorkspace.shared.open($0) }) {
         self.eventTap = eventTap
         self.stats = stats
         self.secureInputMonitor = secureInputMonitor
         self.updateChecker = updateChecker
         self.repeatingTaskFactory = repeatingTaskFactory
+        self.updateResultPresenter = updateResultPresenter
+        self.urlOpener = urlOpener
         self.aboutPanel = AboutPanelController(
             stats: stats,
             currentInputSource: currentInputSourceDisplay,
@@ -110,16 +119,10 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
 
         menu.addItem(action(localized("menu.about"), #selector(showAbout)))
 
-        let checkForUpdatesTitle: String
-        let checkForUpdatesSelector: Selector
-        if case .available(let version) = updateChecker.result {
-            checkForUpdatesTitle = String(format: localized("menu.update_available"), version)
-            checkForUpdatesSelector = #selector(openLatestRelease)
-        } else {
-            checkForUpdatesTitle = localized("menu.check_for_updates")
-            checkForUpdatesSelector = #selector(checkForUpdates)
-        }
-        menu.addItem(action(checkForUpdatesTitle, checkForUpdatesSelector))
+        // Sparkle-style: a single "Check for Updates…" entry that always
+        // presents a result dialog. The dialog (not the menu) communicates
+        // up-to-date / available / unknown.
+        menu.addItem(action(localized("menu.check_for_updates"), #selector(checkForUpdates)))
 
         let quit = NSMenuItem(title: localized("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
@@ -133,8 +136,14 @@ final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling 
     @objc private func resetStats() { stats.reset() }
     @objc private func toggleLaunchAtLogin() { LaunchAtLoginManager.toggle() }
     @objc private func showAbout() { aboutPanel.show(nil) }
-    @objc private func openLatestRelease() { NSWorkspace.shared.open(UpdateChecker.releasesURL) }
-    @objc private func checkForUpdates() { updateChecker.checkInBackground() }
+    @objc private func checkForUpdates() {
+        updateChecker.checkInBackground { [weak self] result in
+            guard let self else { return }
+            self.updateResultPresenter(result) { [weak self] in
+                self?.urlOpener(UpdateChecker.releasesURL)
+            }
+        }
+    }
 
     // MARK: - Helpers
 
