@@ -4,13 +4,7 @@ import os
 
 private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "StatusBar")
 
-/// Presents the result of a Check for Updates run.
-/// `onDownload` is invoked only when the user confirms downloading from the
-/// `.available` alert.
 typealias UpdateResultPresenting = (_ result: UpdateResult, _ onDownload: @escaping () -> Void) -> Void
-
-/// Opens a URL externally (default: NSWorkspace). Injectable so tests can
-/// observe what would be opened without spawning a browser.
 typealias URLOpening = (URL) -> Void
 
 final class StatusBarController: NSObject, NSMenuDelegate, StatusBarControlling {
