@@ -17,6 +17,8 @@
 "menu.login.enabled" = "✓ 登录时启动";
 "menu.login.disabled" = "登录时启动";
 "menu.about" = "关于 ctrl-b";
+"menu.check_for_updates" = "检查更新";
+"menu.update_available" = "有新版本: v%@ →";
 "menu.quit" = "退出";
 "tooltip.state.enabled" = "ctrl-b 正在重映射 Ctrl+按键输入。";
 "tooltip.state.paused" = "ctrl-b 当前已暂停。";

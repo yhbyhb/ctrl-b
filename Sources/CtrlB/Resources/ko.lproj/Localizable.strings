@@ -17,6 +17,8 @@
 "menu.login.enabled" = "✓ 로그인 시 자동 실행";
 "menu.login.disabled" = "로그인 시 자동 실행";
 "menu.about" = "ctrl-b 정보";
+"menu.check_for_updates" = "업데이트 확인";
+"menu.update_available" = "업데이트 가능: v%@ →";
 "menu.quit" = "종료";
 "tooltip.state.enabled" = "ctrl-b가 Ctrl+키 입력을 리매핑하고 있습니다.";
 "tooltip.state.paused" = "ctrl-b가 일시 중지된 상태입니다.";
