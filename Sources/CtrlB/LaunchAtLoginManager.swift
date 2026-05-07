@@ -1,4 +1,7 @@
 import ServiceManagement
+import os
+
+private let log = Logger(subsystem: "com.yhbyhb.ctrl-b", category: "LaunchAtLogin")
 
 /// Manages launch-at-login via SMAppService (macOS 13+)
 enum LaunchAtLoginManager {
@@ -14,7 +17,7 @@ enum LaunchAtLoginManager {
                 try SMAppService.mainApp.register()
             }
         } catch {
-            print("LaunchAtLogin error: \(error.localizedDescription)")
+            log.error("LaunchAtLogin toggle failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 }
