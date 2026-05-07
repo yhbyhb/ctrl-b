@@ -3,6 +3,16 @@ import XCTest
 @testable import CtrlBCore
 
 final class UpdateCheckerTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        MockURLProtocol.reset()
+    }
+
+    override func tearDown() {
+        MockURLProtocol.reset()
+        super.tearDown()
+    }
+
     func test_isNewerVersion_majorBump() {
         XCTAssertTrue(isNewerVersion("2.0.0", than: "1.9.9"))
     }
@@ -116,14 +126,30 @@ private func makeSession(tagName: String) -> URLSession {
 }
 
 private func makeSession(responseData: Data) -> URLSession {
-    MockURLProtocol.responseData = responseData
+    MockURLProtocol.setHandler { _ in (200, responseData) }
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [MockURLProtocol.self]
     return URLSession(configuration: config)
 }
 
 private final class MockURLProtocol: URLProtocol {
-    static var responseData: Data = Data()
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var handler: (URLRequest) -> (Int, Data) = { _ in (200, Data()) }
+
+    static func setHandler(_ newHandler: @escaping (URLRequest) -> (Int, Data)) {
+        lock.lock(); defer { lock.unlock() }
+        handler = newHandler
+    }
+
+    static func reset() {
+        lock.lock(); defer { lock.unlock() }
+        handler = { _ in (200, Data()) }
+    }
+
+    private static func currentHandler() -> (URLRequest) -> (Int, Data) {
+        lock.lock(); defer { lock.unlock() }
+        return handler
+    }
 
     // swiftlint:disable:next static_over_final_class
     override class func canInit(with request: URLRequest) -> Bool { true }
@@ -131,14 +157,15 @@ private final class MockURLProtocol: URLProtocol {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
+        let (statusCode, data) = Self.currentHandler()(request)
         guard let url = request.url,
-              let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)
+              let response = HTTPURLResponse(url: url, statusCode: statusCode, httpVersion: nil, headerFields: nil)
         else {
             client?.urlProtocolDidFinishLoading(self)
             return
         }
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: MockURLProtocol.responseData)
+        client?.urlProtocol(self, didLoad: data)
         client?.urlProtocolDidFinishLoading(self)
     }
 
