@@ -30,19 +30,23 @@ Split into two SPM targets:
   - `StatisticsManager`: Tracks remap count and estimated time saved using UserDefaults (supports DI for testing)
   - `inputSourceDisplay()`: Maps a TIS language tag + localized name into a flag-emoji/display-name struct for the About panel. Prefix-based matching with `zh-Hant*` checked before `zh*`.
   - `isInputMethod()`: Pure check for `TISTypeKeyboardInputMode` source type.
+  - `isNewerVersion(_:than:)`: Semantic version comparison (major.minor.patch). Used by `UpdateChecker` to decide whether a fetched tag is newer than the running version.
 
 - **CtrlB** (`Sources/CtrlB/`) — App executable. Uses Cocoa, CoreGraphics, Carbon, and ServiceManagement frameworks.
   - `AppDelegate`: App initialization using factory-closure DI for all dependencies (enabling full unit test coverage). Handles Accessibility permission detection (via DistributedNotificationCenter `com.apple.accessibility.api` + 3-second polling fallback) and auto-starts the event tap when permission is granted.
-  - `EventTapManager`: In the CGEventTap callback, when IME + Ctrl + alphabet keyCode conditions are met, discards the original event (return nil) and creates/posts a synthetic event via `CGEventSource(stateID: .hidSystemState)`. Uses an `eventSourceUserData` sentinel value to prevent infinite loops. After remapping a prefix key (Ctrl+b), also remaps follow-up keys pressed within 1.5 seconds.
+  - `EventTapManager`: In the CGEventTap callback, when IME + Ctrl + alphabet keyCode conditions are met, discards the original event (return nil) and creates/posts a synthetic event via `CGEventSource(stateID: .hidSystemState)`. Uses an `eventSourceUserData` sentinel value to prevent infinite loops. After remapping a prefix key (Ctrl+b), also remaps follow-up keys pressed within 1.5 seconds. Tracks `pressedRemappedKeyCodes` to pair keyUp with the keyDown remap decision, ensuring the target app always sees a balanced synthetic keyDown + keyUp sequence. Handles `tapDisabledByTimeout` by tearing down and recreating the tap (vs. `tapDisabledByUserInput` which only calls `setEnabled(true)`).
   - `EventTapEngine`: Wraps CGEventTap creation/lifecycle; implements `EventTapEngineControlling` and is injected into `EventTapManager` for testability.
-  - `AppRuntimeSupport`: Defines protocols (`EventTapControlling`, `AccessibilityPermissionObserving`, `RepeatingTask`) and concrete implementations (`AccessibilityPermissionObserver`, `TimerRepeatingTask`) used for DI throughout.
+  - `AppRuntimeSupport`: Defines protocols (`EventTapControlling`, `AccessibilityPermissionObserving`, `RepeatingTask`) and concrete implementations (`AccessibilityPermissionObserver`, `TimerRepeatingTask`) used for DI throughout. Also defines factory typealiases (`StatusBarFactory`, `UpdateCheckerFactory`, etc.) used by `AppDelegate`.
   - `AccessibilityPermissionController`: Implements `AccessibilityPermissionControlling` for `AXIsProcessTrusted` checks; injected into `EventTapManager` and `AppDelegate`.
   - `StatusMenuModel`: Value-type model — `EventTapState` enum, `StatusMenuModel` struct, `StatusMenuModelBuilder` for state-to-menu-model mapping.
   - `InputSourceUtils`: Detects IME input sources based on `TISCopyCurrentKeyboardInputSource` (`kTISTypeKeyboardInputMode` check). Includes `logCurrentInputSource()` for debugging.
-  - `StatusBarController`: Uses NSMenuDelegate to refresh statistics each time the menu opens (no Timer needed). Uses `lazy var` for `NSStatusBar.system` to defer init and prevent crashes in headless CI.
+  - `StatusBarController`: Uses NSMenuDelegate to rebuild the menu each time it opens. Injects `UpdateResultPresenting` and `URLOpening` closures for testability. Uses `lazy var` for `NSStatusBar.system` to defer init and prevent crashes in headless CI. Polls `SecureInputMonitoring` on a repeating timer to track Secure Keyboard Entry state.
+  - `UpdateChecker`: Fetches the latest GitHub release tag via the Releases API, strips `v`-prefix and pre-release suffixes, compares with the running version via `isNewerVersion`, and stores the result as `UpdateResult` (`.unknown` / `.upToDate` / `.available(latestVersion:)`). Re-entry guard prevents concurrent requests; failure paths reset to `.unknown`. Accepts an optional completion callback delivered on the main thread.
+  - `UpdateResultPresenter`: Module-level `presentUpdateResultAsAlert` function — the default `UpdateResultPresenting` implementation. Presents an `NSAlert` for each `UpdateResult` state; calls `onDownload` only when the user confirms the Download button.
+  - `SecureInputMonitor`: Wraps `IOHIDCheckAccess` / `SLSGetSecureEventInput` to detect whether another process has enabled Secure Keyboard Entry (which blocks CGEventTap).
   - `Localization`: `Strings` enum wrapping `NSLocalizedString` for compile-time key safety.
   - `LaunchAtLoginManager`: Based on SMAppService (macOS 13+)
-  - `AboutPanelController`: Builds a custom Credits `NSAttributedString` (keycap demo, live IME indicator, lifetime stats, project links) and shows Apple's standard About panel via `orderFrontStandardAboutPanel`. Credits body is English-only; only the menu item title is localized.
+  - `AboutPanelController`: Builds a custom Credits `NSAttributedString` (keycap demo, live IME indicator, Secure Keyboard Entry state, lifetime stats, project links) and shows Apple's standard About panel via `orderFrontStandardAboutPanel`. Credits body is English-only; only the menu item title is localized.
 
 ## Key Design Decisions
 
@@ -54,7 +58,9 @@ Split into two SPM targets:
 - **StatisticsManager DI**: `UserDefaults` is injected via the initializer, allowing tests to use an isolated suite.
 - **Lazy NSStatusBar init**: `StatusBarController` uses `lazy var statusItem` to defer `NSStatusBar.system` access, preventing crashes when tests run in a headless (no-window-server) environment.
 - **LSUIElement=true**: Hides the Dock icon; the app runs as a menu-bar-only app.
-- **os.Logger**: Structured logging under the `com.yhbyhb.ctrl-b` subsystem. Supports per-category filtering in Console.app.
+- **os.Logger**: Structured logging under the `com.yhbyhb.ctrl-b` subsystem. Each class uses its own category (`AppDelegate`, `EventTap`, `StatusBar`, `UpdateChecker`, `SecureInput`, `LaunchAtLogin`) for per-category filtering in Console.app.
+- **keyUp/keyDown pairing**: `EventTapManager` records which keyCodes had their keyDown remapped in `pressedRemappedKeyCodes`. On keyUp, if the keyCode is in the set, the keyUp is also remapped regardless of current IME state — ensuring the target app always receives a balanced synthetic pair.
+- **tapDisabledByTimeout recovery**: macOS invalidates the CFMachPort on timeout, making `setEnabled(true)` a no-op. `EventTapManager` handles this by tearing down and recreating the tap via `attemptToEnable`.
 
 ## Conventions
 
